@@ -1,0 +1,22 @@
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: my-ingress
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: "letsencrypt-staging"
+spec:
+  tls:
+  - hosts:
+    - sdalton-test.local
+    secretName: "sdalton-test.local-staging-tls"
+  rules:
+  - host: sdalton-test
+    http:
+      paths:
+        - path: /
+          backend:
+            serviceName: sdalton-test
+            servicePort: 80
+---
