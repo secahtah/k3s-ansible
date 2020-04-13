@@ -1,7 +1,7 @@
 ---
 - hosts: all
   vars:
-    - devops_password: 'Sp00t;Head'
+    - pi_password: 'Sp00t;Head'
   gather_facts: no
   remote_user: pi
   become: true
