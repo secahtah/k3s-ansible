@@ -1,0 +1,13 @@
+---
+- hosts: all
+  vars:
+    - devops_password: 'Sp00t;Head'
+  gather_facts: no
+  remote_user: pi
+  become: true
+
+tasks:
+- name: Deploy SSH Key
+     authorized_key: user=pi
+                     key="{{ lookup('file', '/home/pi/.ssh/id_rsa.pub') }}"
+                     state=present
