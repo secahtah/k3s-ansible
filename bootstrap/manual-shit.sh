@@ -5,6 +5,11 @@
 #   We assume the raspberri pi is the default install at this point
 #   But you've configured networking, disabled the damned desktop,
 #   and enabled ssh.
+#? TODO: Move all this crap to ansible except the setup of ansible itself
+
+# On the Ansible server, install these or you can't do Ansible or the key transfer
+sudo apt-get install ansible
+sudo apt-get install sshpass
 
 # Set hostname variable
 export NEWHOSTNAME="k3s-server"
@@ -28,9 +33,18 @@ sudo mkdir /mnt/ssd
 sudo chown -R pi:pi /mnt/ssd/
 
 # add NFS to /etc/fstab
-#? Also doesn't fucking work, fix me
-#  The NFS won't mount because the Pi's wifi comes up after it tries to mount
-#  the NFS
-sudo echo "10.50.0.10:/mnt/gihugic/k3s   /mnt/ssd   nfs    rw  0  0" >> /etc/fstab
+#  Note: do sudo raspi-config, do boot options, enable "wait until networking"
+#  or run the below
+#? FIXME: Test this 
+sudo mkdir -p /etc/systemd/system/dhcpcd.service.d/
+#? This doens't work, you have to for some reason ACTUALLY run it as root
+sudo cat > /etc/systemd/system/dhcpcd.service.d/wait.conf << EOF
+[Service]
+ExecStart=
+ExecStart=/usr/lib/dhcpcd5/dhcpcd -q -w
+EOF
+#? NOTE: Make sure you can write to the NFS Mount; in FreeNAS I had to 
+#        set the Map user to root, and Map group to wheel. 
+sudo echo "10.50.0.10:/mnt/gihugic/k3s/   /mnt/ssd   nfs    rw,hard,intr,rsize=8192,wsize=8192,timeo=14  0  0" >> /etc/fstab
 
 # 
