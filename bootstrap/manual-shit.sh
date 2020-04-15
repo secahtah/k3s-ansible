@@ -11,8 +11,9 @@
 hostnamectl set-hostname k3s-server
 
 # fix /etc/hosts entries after renaming the host
-#? replace raspberry with k3s-server
+#? replace raspberrypi with k3s-server
 #? make variable
+sudo sed -i 's/raspberrypi/k3s-server/g' /etc/hosts
 
 # set static address on it
 
