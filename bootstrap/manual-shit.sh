@@ -10,12 +10,15 @@
 # On the Ansible server, install these or you can't do Ansible or the key transfer
 sudo apt-get install ansible
 sudo apt-get install sshpass
+# Now run the playbook
+#   If you have a device that bitches about the password, use the -k option below
+ansible-playbook -i inventory add-ssh-user.yml -k
 
 # Set hostname variable
-export NEWHOSTNAME="k3s-server"
+export NEWHOSTNAME="k3s-agent-01"
 
 # set the hostname
-hostnamectl set-hostname $NEWHOSTNAME
+sudo hostnamectl set-hostname $NEWHOSTNAME
 
 # fix /etc/hosts entries after renaming the host
 #   Source:
@@ -29,7 +32,6 @@ sudo sed -i 's/raspberrypi/$NEWHOSTNAME/g' /etc/hosts
 sudo mkdir /mnt/ssd
 
 # Fix permissions BEFORE mounting it
-#? Still doesn't fucking work
 sudo chown -R pi:pi /mnt/ssd/
 
 # add NFS to /etc/fstab
@@ -48,3 +50,4 @@ EOF
 sudo echo "10.50.0.10:/mnt/gihugic/k3s/   /mnt/ssd   nfs    rw,hard,intr,rsize=8192,wsize=8192,timeo=14  0  0" >> /etc/fstab
 
 # 
+

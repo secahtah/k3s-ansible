@@ -1,2 +1,24 @@
 ---
 # tasks file for common
+- name: Create /mnt/ssd directory to mount NFS
+## create the directory to mount NFS
+# sudo mkdir /mnt/ssd
+
+- name: Fix permissions on /mnt/ssd
+## Fix permissions BEFORE mounting it
+# sudo chown -R pi:pi /mnt/ssd/
+
+- name: Make directory /etc/systemd/system/dhcpcd.service.d
+## Do the things
+# sudo mkdir -p /etc/systemd/system/dhcpcd.service.d/
+
+## Put this file in this location:
+# sudo cat > /etc/systemd/system/dhcpcd.service.d/wait.conf << EOF
+# [Service]
+# ExecStart=
+# ExecStart=/usr/lib/dhcpcd5/dhcpcd -q -w
+# EOF
+
+## Put this text in this file - but only if the text doesn't already exist
+# sudo echo "10.50.0.10:/mnt/gihugic/k3s/   /mnt/ssd   nfs    rw,hard,intr,rsize=8192,wsize=8192,timeo=14  0  0" >> /etc/fstab
+

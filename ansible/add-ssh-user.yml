@@ -11,3 +11,4 @@
     authorized_key: user=pi
                     key="{{ lookup('file', '/home/pi/.ssh/id_rsa.pub') }}"
                     state=present
+
