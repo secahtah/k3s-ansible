@@ -12,6 +12,7 @@
 ## Do the things
 # sudo mkdir -p /etc/systemd/system/dhcpcd.service.d/
 
+- name: Add wait.conf in order to make system pause for networking
 ## Put this file in this location:
 # sudo cat > /etc/systemd/system/dhcpcd.service.d/wait.conf << EOF
 # [Service]
@@ -19,6 +20,7 @@
 # ExecStart=/usr/lib/dhcpcd5/dhcpcd -q -w
 # EOF
 
+- name: Add NFS Mount point if doesn't exist to /etc/fstab
 ## Put this text in this file - but only if the text doesn't already exist
 # sudo echo "10.50.0.10:/mnt/gihugic/k3s/   /mnt/ssd   nfs    rw,hard,intr,rsize=8192,wsize=8192,timeo=14  0  0" >> /etc/fstab
-
+# https://docs.ansible.com/ansible/latest/modules/lineinfile_module.html
