@@ -1,2 +1,25 @@
 ---
 # tasks file for tools-server
+#
+# This role assumes that a linux server for it run against has already been deployed.  A server of some sort is needed in order
+# to install metalLB via helm.  The actual installation of metalLB should be handled in the k3s-server role.
+#
+# 1. Install kubectl
+#   - download kubectl:
+#   curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl
+#   chmod +x kubectl
+#   mv kubectl /usr/local/sbin
+#
+# 2. Pull the kube config file off of the master node
+#   - mkdir ~/.kube
+#   - scp <<IP OR FQDN OF MASTER NODE>>:/etc/rancher/k3s.yaml ~/.kube/config
+#
+# 3. Change the localhost IP to the IP of the master node in the file pulled from the master node:
+#   - set -i 's/127\.0\.0\.1/<<MASTER NODE IP OR FQDN>>/g' ~/.kube/config
+#
+# 4. Install Helm (all commands below as root or via sudo
+#   - curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
+#   - chmod 700 get_helm.sh
+#   - ./get_helm.sh
+#   - helm repo add stable https://kubernetes-charts.storage.googleapis.com
+#   - helm repo update
