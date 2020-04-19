@@ -3,30 +3,80 @@
 # tasks file for tools-server
 #
 # This role assumes that a linux server for it run against has already been deployed.  A server of some sort is needed in order
-# to install metalLB via helm.  The actual installation of metalLB should be handled in the k3s-server role.
-#
-- name: download kubectl
+# to install metalLB via helm.  The actual installation of metalLB should be handled in the k3s-server role.  The hosts that this 
+# playbook needs to run agains are the server where we want kubectl deployed and the master node in order to pull the kube config file
+- name: Get Kubectl latest version info
 # 1. Install kubectl
 #   - download kubectl:
 #   curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl
+  get_url:
+    url: https://storage.googleapis.com/kubernetes-release/release/stable.txt
+    dest: /tmp/latest_kubectl_verison
+    mode: '0440'
+  when: inventory_hostname == 'localhost'
+
+- name: Download Kubectl version {{ lookup('file', '/tmp/latest_kubectl_version') }}
+  get_url: 
+    url: https://storage.googleapis.com/kubernetes-release/release/{{ lookup('file', '/tmp/latest_kubectl_version') }}/bin/linux/amd64/kubectl
+    dest: /tmp/kubectl
+    mode: '0777'
+  when: inventory_hostname == 'localhost'
+
+- name: Remove temp file with latest kubectl version
+  file:
+    path: /tmp/latest_kubectl_version
+    state: absent
+  when: inventory_hostname == 'locathost'
+
+- name: Update file permissions on the kubectl executable
+  file:
+    path: /tmp/kubectl
+    mode: '0775' 
+  when: inventory_hostname == 'localhost'
 
 - name: Move kubectl to /usr/local/sbin
 #   mv kubectl /usr/local/sbin
+  copy:
+    src: /tmp/kubectl
+    dest: /usr/local/sbin/
+    owner: root
+    group: root
+    mode: '0775'
+  when: inventory_hostname == 'localhost'
 
-- name: Fix permissions on kubectl
-#   chmod +x kubectl
+- name: Remove temp kubectl file in /tmp/
+  file:
+    path: /tmp/kubectl
+    state: absent
+  when: inventory_hostname == 'localhost'
 
 - name: Make .kube directory if doesn't exist
-#   - mkdir ~/.kube
+#   - mkdir ~/.kube, this task assumes the asadmin user, update for another user
+  file:
+    path: /home/asadmin/.kube
+    owner: asadmin
+    group: asadmin
+    state: directory
+    mode: '0775'
+  when: inventory_hostname == 'localhost'
 
 - name: Fetch kube config file from master node
 # 2. Pull the kube config file off of the master node
 #   - scp <<IP OR FQDN OF MASTER NODE>>:/etc/rancher/k3s.yaml ~/.kube/config
-#
+  fetch:
+    src: /etc/rancher/k3s/k3s.yaml
+    dest: /home/asadmin/.kube/config
+    flat: yes
+  when: ansible_hostname == 'master01'
+
 # 3. Change the localhost IP to the IP of the master node in the file pulled from the master node:
 - name: Replace text in kubeconfig (localhost -> master node IP or FQDN)
 #   - sed -i 's/127\.0\.0\.1/<<MASTER NODE IP OR FQDN>>/g' ~/.kube/config
-#
+  replace:
+    path: /home/asadmin/.kube/config
+    regexp: '127\.0\.0\.1'
+    replace: "{{ hostvars['master01']['ansible_default_ipv4']['address'] }}"
+  when: inventory_hostname == 'localhost'
 
 # 4. Install Helm (all commands below as root or via sudo
 - name: Fetch Helm
