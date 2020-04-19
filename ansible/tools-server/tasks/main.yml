@@ -53,6 +53,7 @@
 - name: Make .kube directory if doesn't exist
 #   - mkdir ~/.kube, this task assumes the asadmin user, update for another user
   file:
+    #? FIXME: Make variable for the user
     path: /home/asadmin/.kube
     owner: asadmin
     group: asadmin
