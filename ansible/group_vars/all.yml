@@ -1,4 +1,4 @@
 ---
 ansible_connection: ssh 
 ansible_ssh_user: pi 
-#ansible_ssh_pass: Sp00t;Head
+#ansible_ssh_pass: 
