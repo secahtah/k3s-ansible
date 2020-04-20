@@ -82,16 +82,20 @@
 # 4. Install Helm (all commands below as root or via sudo
 - name: Fetch Helm
 #   - curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
+    get_url:
+      url: https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
+      dest: /tmp/get_helm.sh
+      mode: '0777'
+    when: inventory_hostname == 'localhost'      
 
-- name: set permissions of helm script
-#   - chmod 700 get_helm.sh
-
-#? do we need this and the curl fsSL step?
 - name: run helm.sh
 #   - ./get_helm.sh
+  script: /tmp/get_helm.sh
 
 - name: Add helm stable repo
 #   - helm repo add stable https://kubernetes-charts.storage.googleapis.com
+  command: helm repo add stable https://kubernetes-charts.storage.googleapis.com
 
 - name: update helm repo
 #   - helm repo update
+  command: helm repo update
