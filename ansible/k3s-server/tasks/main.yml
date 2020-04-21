@@ -1,2 +1,26 @@
 ---
 # tasks file for k3s-server
+
+# This role get's for the most part executed against the server in order to build it from scratch.
+# Some of the operations that install helm charts get executed on the tools server technically since
+# that's where kubectl and helm are installed.  Those items will be duly noted here and there will 
+# have to be appropriate tags on all of the task.
+#
+# This role assumes that the master k3s server has at least given an IP address and can reach the internet
+
+- name: Download k3s installer
+  get_url:
+    url: https://get.k3s.io
+    dest: /tmp/k3s_install.sh
+    mode: '0755'
+  tags:
+  - k3s_install 
+
+- name: Run k3s installer
+  script: /tmp/k3s_install.sh
+  environment:
+    K3S_KUBECONFIG_MODE: '644'
+    INSTALL_K3S_EXEC: '--nodeploy servicelb --no-deploy traefik'
+  tags:
+  - k3s_install
+
