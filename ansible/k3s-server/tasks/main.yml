@@ -26,18 +26,21 @@
 
 - name: Install metallb via helm
   helm:
-    chart:
-      name: stable/metallb
-        source:
     host: localhost
     state: present
-    name: metallb
+    name:  metallb
     namespace: kube-system
+    chart:
+      name: stable/metallb
+      source:
+        type: repo
+        location: https://kubernetes-charts.storage.googleapis.com
     values:
-      configInline.address-pools:
-        name: default
-        protocol: layer2
-        addresses: 192.168.1.128-192.168.1.254
+      configInline:
+        address-pools:
+          - name: default
+            protocol: layer2
+            addresses: 192.168.1.128-192.168.1.254
 
 - name: Install metallb via helm with the command module
   command: >
