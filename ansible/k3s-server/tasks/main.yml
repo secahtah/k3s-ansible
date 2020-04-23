@@ -42,9 +42,25 @@
             protocol: layer2
             addresses: 192.168.1.128-192.168.1.254
 
-- name: Install metallb via helm with the command module
-  command: >
-    helm install metallb stable/metallb --namespace kube-system 
-    --set configInline.address-pools[0].name=default 
-    --set configInline.address-pools[0].protocol=layer2 
-    --set configInline.address-pools[0].addresses[0]=192.168.1.128-192.168.1.254
+
+#- name: Install metallb via helm with the command module
+#  command: >
+#    helm install metallb stable/metallb --namespace kube-system 
+#    --set configInline.address-pools[0].name=default 
+#    --set configInline.address-pools[0].protocol=layer2 
+#    --set configInline.address-pools[0].addresses[0]=192.168.1.128-192.168.1.254
+
+- name: Install custom resource definition for cert manager
+  #? can this be done via the k8s module?  Not clear if that's just kubectl under the hood
+
+- name: Add jetstack repo to helm 
+
+- name: Install cert-manager into the kube-system namespace 
+
+- name: Create an NFS based persistentVolume
+
+- name: Install the K8s dashboard
+  # Note, the guide only walks you through using kube proxy to access the dashboard which restricts
+  # the allowed source to localhost by design.  Need to investigate how to securely expose the dashboard
+  # via a service for the purposes of the install script in order to be able to access the dashboard
+  # from anywhere.
