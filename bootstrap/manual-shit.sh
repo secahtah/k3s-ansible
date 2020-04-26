@@ -8,14 +8,21 @@
 #? TODO: Move all this crap to ansible except the setup of ansible itself
 
 # On the Ansible server, install these or you can't do Ansible or the key transfer
+sudo apt-get install git
 sudo apt-get install ansible
 sudo apt-get install sshpass
+
+# On any device that has to be on a network not currently fed the PiHole as its DNS:
+sudo echo "static domain_name_servers=10.50.0.50" >> /etc/dhcpcd.conf
+sudo service dhcpcd restart
+sudo systemctl daemon-reload
+
 # Now run the playbook
 #   If you have a device that bitches about the password, use the -k option below
 ansible-playbook -i inventory add-ssh-user.yml -k
 
 # Set hostname variable
-export NEWHOSTNAME="k3s-agent-01"
+export NEWHOSTNAME="sd-jump-01"
 
 # set the hostname
 sudo hostnamectl set-hostname $NEWHOSTNAME
@@ -47,7 +54,6 @@ ExecStart=/usr/lib/dhcpcd5/dhcpcd -q -w
 EOF
 #? NOTE: Make sure you can write to the NFS Mount; in FreeNAS I had to 
 #        set the Map user to root, and Map group to wheel. 
-sudo echo "10.50.0.10:/mnt/gihugic/k3s/   /mnt/ssd   nfs    rw,hard,intr,rsize=8192,wsize=8192,timeo=14  0  0" >> /etc/fstab
 
 # 
 
