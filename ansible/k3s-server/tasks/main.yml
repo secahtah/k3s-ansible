@@ -8,6 +8,8 @@
 #
 # This role assumes that the master k3s server has at least given an IP address and can reach the internet
 
+# Pass the user as an --extra-var to this playbook to detemine if rmengert or sdalton will be run
+
 - name: Download k3s installer
   get_url:
     url: https://get.k3s.io
@@ -41,6 +43,8 @@
           - name: default
             protocol: layer2
             addresses: 192.168.1.128-192.168.1.254
+  tags:
+  - k3s_support
 
 
 #- name: Install metallb via helm with the command module
@@ -50,14 +54,58 @@
 #    --set configInline.address-pools[0].protocol=layer2 
 #    --set configInline.address-pools[0].addresses[0]=192.168.1.128-192.168.1.254
 
+- name: Download the custom resource definition for cert manager
+  get_url:
+    url: https://raw.githubusercontent.com/jetstack/cert-manager/release-0.14/deploy/manifests/00-crds.yaml
+    dest: /tmp/00-crds.yaml
+    mode: '0777'
+  tags:
+  - k3s_support
+
 - name: Install custom resource definition for cert manager
   #? can this be done via the k8s module?  Not clear if that's just kubectl under the hood
+  # looks like it can, trying that out - 
+  # kubectl apply --validate=false -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.14/deploy/manifests/00-crds.yaml
+  k8s:
+    state: present
+    api_version: v1
+    apply: yes
+    validate:
+      fail_on_error: yes
+      strict: no
+    apply: yes
+    resource_definition: "{{ lookup('file', '/tmp/00-crds.yaml ')}}"
+  tags:
+  - k3s_support
 
-- name: Add jetstack repo to helm 
+- name: Add jetstack repo to helm and update all helm repos
+  # going to do this via the command module until a better way is found
+  command: helm repo add jetstack https://charts.jetstack.io && helm repo update
+  - k3s_support
 
 - name: Install cert-manager into the kube-system namespace 
+  # goign to do this via the command module until a better way is found
+  command: helm install cert-manager jetstack/cert-manager --namespace kube-system
+  tags:
+  - k3s_support
+
+- name: Configure lets-encrypt staging certificate issues
+  k8s:
+    state: present
+    src: "../../{{ user }}/cert-issuer-stage.yml"
+  tags:
+  - k3s_support
+
+- name: Configure lets-encrypt prod certificate issues
+  k8s:
+    state: present
+    src: "../../{{ user }}/cert-issuer-prod.yml"
+  tags:
+  - k3s_support
+
 
 - name: Create an NFS based persistentVolume
+
 
 - name: Install the K8s dashboard
   # Note, the guide only walks you through using kube proxy to access the dashboard which restricts
