@@ -1,5 +1,8 @@
 ---
 # tasks file for common
+- name: Update all packages - assume nothing is done
+# sudo apt-get update && sudo apt-get upgrade
+
 - name: Create /mnt/ssd directory to mount NFS
 ## create the directory to mount NFS
 # sudo mkdir /mnt/ssd
