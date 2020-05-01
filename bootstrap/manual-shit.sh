@@ -42,6 +42,8 @@ sudo mkdir /mnt/ssd
 sudo chown -R pi:pi /mnt/ssd/
 
 # add NFS to /etc/fstab
+sudo echo "10.50.0.10:/mnt/gihugic/k3s/   /mnt/ssd   nfs    rw,hard,intr,rsize=8192,wsize=8192,timeo=14  0  0" >> /etc/fstab
+
 #  Note: do sudo raspi-config, do boot options, enable "wait until networking"
 #  or run the below
 #? FIXME: Test this 
