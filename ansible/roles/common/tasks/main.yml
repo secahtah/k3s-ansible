@@ -2,16 +2,30 @@
 # tasks file for common
 - name: Update all packages - assume nothing is done
 # sudo apt-get update && sudo apt-get upgrade
+  apt:
+    name: "*"
+    state: latest
+    update_cache: yes
+    cache_valid_time: 7200
 
 - name: Create /mnt/ssd directory to mount NFS
 ## create the directory to mount NFS
 # sudo mkdir /mnt/ssd
 #? https://docs.ansible.com/ansible/latest/modules/file_module.html
+  file:
+    path: /mnt/ssd
+    state: directory
+    owner: pi 
+    group: pi 
+    mode: '0644'
+  when: "{{ username }}" == "sdalton"
+
 
 - name: Fix permissions on /mnt/ssd
 ## Fix permissions BEFORE mounting it
 # sudo chown -R pi:pi /mnt/ssd/
 #? https://docs.ansible.com/ansible/latest/modules/file_module.html#parameter-group
+# file permissions can be set via the file command on directory creation, see above, may need to be modified - rmengert
 
 - name: Make directory /etc/systemd/system/dhcpcd.service.d
 ## Do the things
