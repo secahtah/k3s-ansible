@@ -1,4 +1,4 @@
-# k3s-sdalton
+# k3s-ansible
 
 This repository is my sorry attempt to build a fully funcational Raspberry Pi k3s cluster. It has one server and N agents. 
 
