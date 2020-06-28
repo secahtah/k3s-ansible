@@ -1,2 +1,7 @@
 ---
 # vars file for common
+nfsmountdir = /mnt/ssd
+username = sdalton
+owner = pi
+group = pi
+...

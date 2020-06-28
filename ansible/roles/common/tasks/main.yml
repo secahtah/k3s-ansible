@@ -8,24 +8,16 @@
     update_cache: yes
     cache_valid_time: 7200
 
-- name: Create /mnt/ssd directory to mount NFS
+- name: Create Mount directory to mount NFS
 ## create the directory to mount NFS
 # sudo mkdir /mnt/ssd
 #? https://docs.ansible.com/ansible/latest/modules/file_module.html
   file:
-    path: /mnt/ssd
+    path: "{{ nfsmountdir }}"
     state: directory
-    owner: pi 
-    group: pi 
+    owner: "{{ nfsowner }}"
+    group: "{{ nfsgroup }}"
     mode: '0644'
-  when: "{{ username }}" == "sdalton"
-
-
-- name: Fix permissions on /mnt/ssd
-## Fix permissions BEFORE mounting it
-# sudo chown -R pi:pi /mnt/ssd/
-#? https://docs.ansible.com/ansible/latest/modules/file_module.html#parameter-group
-# file permissions can be set via the file command on directory creation, see above, may need to be modified - rmengert
 
 - name: Make directory /etc/systemd/system/dhcpcd.service.d
 ## Do the things
@@ -45,3 +37,4 @@
 ## Put this text in this file - but only if the text doesn't already exist
 # sudo echo "10.50.0.10:/mnt/gihugic/k3s/   /mnt/ssd   nfs    rw,hard,intr,rsize=8192,wsize=8192,timeo=14  0  0" >> /etc/fstab
 #? https://docs.ansible.com/ansible/latest/modules/lineinfile_module.html
+...
