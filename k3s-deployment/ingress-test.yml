@@ -17,6 +17,6 @@ spec:
       paths:
         - path: /
           backend:
-            serviceName: sdalton-test
+            serviceName: sdalton-service
             servicePort: 80
 ---
