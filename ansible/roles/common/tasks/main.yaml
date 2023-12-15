@@ -1,0 +1,54 @@
+---
+# tasks file for common
+
+- name: Update all packages
+  ansible.builtin.yum:
+    name: '*'
+    state: latest
+  register: yumcommandout
+
+- name: Print errors if yum failed
+  debug:
+    msg: "yum command produced errors"
+  when: yumcommandout is not defined
+
+- name: Install missing packages
+  ansible.builtin.yum:
+    name: 
+      - epel-release 
+      - jq 
+      - rsync 
+      - tree 
+      - iptables-utils 
+      - nfs-utils
+    state: present
+
+- name: Print errors if yum failed
+  debug:
+    msg: "yum command produced errors"
+  when: yumcommandout is not defined
+
+- name: check to see if we need a reboot
+  command: needs-restarting -r
+  register: result
+  ignore_errors: yes
+
+- name: Reboot Server if Necessary
+  command: shutdown -r now "Ansible Updates Triggered"
+  become: true
+  async: 60
+  poll: 0
+  when: result.rc == 1
+
+- name: Create Mount directory to mount NFS
+  ansible.builtin.file:
+    path: {{ nfspath }}
+    state: directory
+    mode: '0755'
+
+- name: Add NFS Mount point if doesn't exist to /etc/fstab
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    regexp: '^# port for http'
+    insertafter: EOF
+    line: '{{ nfshostname }}:{{ nfsexportpath }}   {{ nfsmountpath }}   nfs   defaults 0 0'

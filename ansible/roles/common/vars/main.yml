@@ -1,7 +1,9 @@
 ---
 # vars file for common
-nfsmountdir = /mnt/ssd
+nfshostname = nfs01
+nfspath = /mnt/nfs
 username = sdalton
-nfsowner = pi
-nfsgroup = pi
+nfsowner = sdalton
+nfsgroup = sdalton
+
 ...
