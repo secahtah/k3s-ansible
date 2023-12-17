@@ -1,9 +1,9 @@
 ---
 # vars file for common
 nfshostname = nfs01
-nfspath = /mnt/nfs
+nfsmountpath = /mnt/nfs
+nfsexportpath = /mnt/nasfs/nfs
 username = sdalton
 nfsowner = sdalton
 nfsgroup = sdalton
-
 ...
