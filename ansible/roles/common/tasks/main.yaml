@@ -6,9 +6,9 @@
     name: '*'
     state: latest
   register: yumcommandout
-
-- name: Print errors if yum failed
-  debug:
+  become: true
+- name: Fail if yum can't upgrade
+  fail:
     msg: "yum command produced errors"
   when: yumcommandout is not defined
 
@@ -22,9 +22,10 @@
       - iptables-utils 
       - nfs-utils
     state: present
-
-- name: Print errors if yum failed
-  debug:
+  become: true
+  
+- name: Fail if yum can't install required packages
+  fail:
     msg: "yum command produced errors"
   when: yumcommandout is not defined
 
@@ -32,7 +33,8 @@
   command: needs-restarting -r
   register: result
   ignore_errors: yes
-
+  become: true
+  
 - name: Reboot Server if Necessary
   command: shutdown -r now "Ansible Updates Triggered"
   become: true
@@ -40,15 +42,23 @@
   poll: 0
   when: result.rc == 1
 
-- name: Create Mount directory to mount NFS
+- name: Create directory to mount NFS
   ansible.builtin.file:
     path: {{ nfspath }}
     state: directory
     mode: '0755'
+  become: true
 
 - name: Add NFS Mount point if doesn't exist to /etc/fstab
   ansible.builtin.lineinfile:
     path: /etc/fstab
-    regexp: '^# port for http'
     insertafter: EOF
     line: '{{ nfshostname }}:{{ nfsexportpath }}   {{ nfsmountpath }}   nfs   defaults 0 0'
+  become: true
+
+- name: Mount the new file system
+# mount /mnt/nfs
+  become: true
+
+- name: Touch a file to ensure that we can write to it
+# touch /mnt/nfs/your-mom

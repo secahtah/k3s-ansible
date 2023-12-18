@@ -1,0 +1,20 @@
+---
+- name: Ansible Playbook to Execute Roles on Nodes
+  hosts: ztp
+#  become: yes  # Set to 'yes' to enable privilege escalation
+
+  vars:
+    # Define any variables here
+    # example_variable: value
+
+  roles:
+    - common
+    # List the roles you want to include
+    # - role: my_role1
+    # - role: my_role2
+    # ...
+
+  tasks:
+    # You can also add individual tasks here if needed
+    # - name: Example Task
+    #   command: echo "This is an example task"

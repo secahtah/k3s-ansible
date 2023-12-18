@@ -1,14 +1,29 @@
 ---
 # tasks file for k3s-server
-
-# This role get's for the most part executed against the server in order to build it from scratch.
-# Some of the operations that install helm charts get executed on the tools server technically since
-# that's where kubectl and helm are installed.  Those items will be duly noted here and there will 
-# have to be appropriate tags on all of the task.
 #
-# This role assumes that the master k3s server has at least given an IP address and can reach the internet
+# This role is executed against the server in order to build it from scratch.
+# Some of the operations that install helm charts get executed on the tools 
+# server technically since that's where kubectl and helm are installed.  
+# Those items will be duly noted here and there will have to be appropriate 
+# tags on all of the task.
+#
+# This role does NOT assume that the first server node has been installed. It
+# looks for the "is_first_node" is set; if it is set to "true" then it performs
+# the installation on the first node (which other nodes will join later). If it
+# is set to "false" it will look for that "first_node_IP_address" variable. 
+# NOTE: If "is_first_node" is "false" and "first_node_IP_address" is null, the
+# role fails to apply.
+#
+# This role assumes that the k3s server has at least given an IP address and 
+# can reach the internet.
+#
+# Pass the user as an --extra-var to this playbook if you need to override that
+# field.
 
-# Pass the user as an --extra-var to this playbook to detemine if rmengert or sdalton will be run
+- name: Bail if they didn't set values correctly
+  fail: 
+    msg: Override the values of first_node_IP_address and is_first_node
+  when: (first_node_IP_address is not defined) and (is_first_node == false)
 
 - name: Download k3s installer
   get_url:
@@ -18,13 +33,15 @@
   tags:
   - k3s_install 
 
-- name: Run k3s installer
+- name: Run k3s installer - first node
   script: /tmp/k3s_install.sh
   environment:
     K3S_KUBECONFIG_MODE: '644'
+    # FIXME: This requires updating because it's missing flags
     INSTALL_K3S_EXEC: '--nodeploy servicelb --no-deploy traefik'
   tags:
   - k3s_install
+  when: 
 
 - name: Install metallb via helm
   helm:
@@ -42,6 +59,7 @@
         address-pools:
           - name: default
             protocol: layer2
+            # FIXME: Move this to a string in "vars"
             addresses: 192.168.1.128-192.168.1.254
   tags:
   - k3s_support
@@ -102,20 +120,6 @@
     src: "../../{{ user }}/cert-issuer-prod.yml"
   tags:
   - k3s_support
-
-
-- name: Create an NFS based persistentVolume
-  k8s:
-    state: present 
-    api_version: v1
-    apply: yes
-    validate:
-      fail_on_error: yes
-      strict: no
-    resource_definition: ../../../../rmengert/nfs-pv.yaml
-  tags:
-  - k3s_support
-
 
 - name: Install the K8s dashboard
   # Note, the guide only walks you through using kube proxy to access the dashboard which restricts
