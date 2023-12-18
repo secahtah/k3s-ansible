@@ -44,7 +44,7 @@
 
 - name: Create directory to mount NFS
   ansible.builtin.file:
-    path: {{ nfspath }}
+    path: "{{ nfspath }}"
     state: directory
     mode: '0755'
   become: true
@@ -58,7 +58,13 @@
 
 - name: Mount the new file system
 # mount /mnt/nfs
+  ansible.builtin.mount:
+    path: "{{ nfsmountpath }}"
+    state: mounted
   become: true
 
 - name: Touch a file to ensure that we can write to it
 # touch /mnt/nfs/your-mom
+  ansible.builtin.file:
+    path: "{{ nfsmountpath }}/your-mom"
+    state: touch
