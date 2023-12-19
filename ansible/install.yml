@@ -1,0 +1,12 @@
+---
+- name: Ansible Playbook to Execute Roles on Nodes
+  hosts: ztp k3s03 k3s04 k3s05 k3s01 k3s02
+  vars:
+    # Define any variables here
+  roles:
+    - common
+
+  tasks:
+    # You can also add individual tasks here if needed
+    # - name: Example Task
+    #   command: echo "This is an example task"

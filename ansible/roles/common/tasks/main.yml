@@ -1,5 +1,21 @@
 ---
 # tasks file for common
+- name: Add DNS hosts for k3s nodes
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    insertafter: EOF
+    line: "{{ item.line }}"
+# Yes, it's hardcoded. I'll fix it later. Besides a real engineer would use
+# DNS. 
+  loop:
+    - { line: '10.50.0.69      sd-pi-02 pidb pgsql nfs01' }
+    - { line: '10.50.0.65      k3s01' }
+    - { line: '10.50.0.66      k3s02' }
+    - { line: '10.50.0.67      k3s03' }
+    - { line: '10.50.0.68      k3s04' }
+    - { line: '10.50.0.70      k3s05' }
+    - { line: '10.50.0.50      ztp' }
+  become: true
 
 - name: Update all packages
   ansible.builtin.yum:
@@ -36,15 +52,14 @@
   become: true
   
 - name: Reboot Server if Necessary
-  command: shutdown -r now "Ansible Updates Triggered"
+  ansible.builtin.reboot:
+    reboot_timeout: 180
   become: true
-  async: 60
-  poll: 0
   when: result.rc == 1
 
 - name: Create directory to mount NFS
   ansible.builtin.file:
-    path: "{{ nfspath }}"
+    path: "{{ nfsmountpath }}"
     state: directory
     mode: '0755'
   become: true
@@ -59,8 +74,10 @@
 - name: Mount the new file system
 # mount /mnt/nfs
   ansible.builtin.mount:
+    src: "{{ nfshostname }}:{{ nfsexportpath }}"
     path: "{{ nfsmountpath }}"
     state: mounted
+    fstype: nfs
   become: true
 
 - name: Touch a file to ensure that we can write to it
