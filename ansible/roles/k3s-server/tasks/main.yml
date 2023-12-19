@@ -25,6 +25,30 @@
     msg: Override the values of first_node_IP_address and is_first_node
   when: (first_node_IP_address is not defined) and (is_first_node == false)
 
+- name: Create folders for setup if they don't exist
+  file: 
+    path: "{{ item }}"
+    state: directory
+    owner: {{ remote_user }}
+    group: {{ remote_user }}
+  loop:
+    - /home/{{ remote_user }}/k3s-setup/certs/client
+    - /home/{{ remote_user }}/k3s-setup/certs/ca
+    - /home/{{ remote_user }}/k3s-setup/certs/server
+    - /home/{{ remote_user }}/k3s-setup/files
+
+#TODO: Some day, when I have "time," should work "
+- name: Copy certs over
+    copy:
+      src: "{{ item.src }}"
+      dest: "{{ item.dest }}"
+    loop:
+      - src: client.key
+      - src: client.crt
+      - src: ca.crt
+      - src: server.crt
+     
+
 - name: Download k3s installer
   get_url:
     url: https://get.k3s.io
@@ -33,7 +57,7 @@
   tags:
   - k3s_install 
 
-- name: Run k3s installer - first node
+- name: Run k3s server installer - 1st node
   script: /tmp/k3s_install.sh
   environment:
     K3S_KUBECONFIG_MODE: '644'
@@ -41,7 +65,17 @@
     INSTALL_K3S_EXEC: '--nodeploy servicelb --no-deploy traefik'
   tags:
   - k3s_install
-  when: 
+  when: (first_node_IP_address is not defined) and (is_first_node == true)
+
+- name: Run k3s server installer - nth node
+  script: /tmp/k3s_install.sh
+  environment:
+    K3S_KUBECONFIG_MODE: '644'
+    # FIXME: This requires updating because it's missing flags
+    INSTALL_K3S_EXEC: '--nodeploy servicelb --no-deploy traefik'
+  tags:
+  - k3s_install
+  when: (first_node_IP_address is defined) and (is_first_node == false)
 
 - name: Install metallb via helm
   helm:

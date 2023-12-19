@@ -1,4 +1,4 @@
 ---
 # defaults file for k3s-server
-first_node_IP_address = ""
-is_first_node = false
+first_node_IP_address: ""
+is_first_node: false
