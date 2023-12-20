@@ -1,5 +1,19 @@
 ---
 # tasks file for common
+
+# On these pi's, they default to 4G which is abysmally low, expand them
+
+- name: Expand partition
+  ansible.builtin.command:
+    cmd: growpart /dev/mmcblk0 3
+  become: true
+  ignore_errors: true
+
+- name: Resize Btrfs filesystem
+  ansible.builtin.command:
+    cmd: btrfs filesystem resize max /
+  become: true
+
 - name: Add DNS hosts for k3s nodes
   ansible.builtin.lineinfile:
     path: /etc/hosts
@@ -71,8 +85,12 @@
     line: '{{ nfshostname }}:{{ nfsexportpath }}   {{ nfsmountpath }}   nfs   defaults 0 0'
   become: true
 
+- name: Perform daemon-reload with systemd
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+  become: true
+
 - name: Mount the new file system
-# mount /mnt/nfs
   ansible.builtin.mount:
     src: "{{ nfshostname }}:{{ nfsexportpath }}"
     path: "{{ nfsmountpath }}"

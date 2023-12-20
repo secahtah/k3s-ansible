@@ -25,35 +25,58 @@
     msg: Override the values of first_node_IP_address and is_first_node
   when: (first_node_IP_address is not defined) and (is_first_node == false)
 
-- name: Create folders for setup if they don't exist
+- name: Detect if k3s is already installed
+  ansible.builtin.systemd:
+    name: "k3s"
+  register: k3s_service_status
+  become: true
+  ignore_errors: true
+
+# Stuck here, when k3s isn't installed, it fails because I can't compare the key "UnitFileState" 
+- name: Set fact if k3s is already installed
+  ansible.builtin.set_fact:
+    k3s_installed: true
+  when: (k3s_service_status is defined and k3s_service_status.status.UnitFileState == "enabled")
+
+- name: Create folder structure for setup if they don't exist
   file: 
     path: "{{ item }}"
     state: directory
-    owner: {{ remote_user }}
-    group: {{ remote_user }}
+    owner: "{{ remote_user }}"
+    group: "{{ remote_user }}"
   loop:
-    - /home/{{ remote_user }}/k3s-setup/certs/client
-    - /home/{{ remote_user }}/k3s-setup/certs/ca
-    - /home/{{ remote_user }}/k3s-setup/certs/server
-    - /home/{{ remote_user }}/k3s-setup/files
+    - "/home/{{ remote_user }}/k3s-setup/certs/client"
+    - "/home/{{ remote_user }}/k3s-setup/certs/ca"
+    - "/home/{{ remote_user }}/k3s-setup/certs/server"
+    - "/home/{{ remote_user }}/k3s-setup/files"
+  tags:
+  - k3s_install 
 
-#TODO: Some day, when I have "time," should work "
+#TODO: Some day, when I have "time," should work on calls to Vault to 
+#      generate certs for this. For the k3s substrate however I honestly am fine
+#      with a local CA
 - name: Copy certs over
-    copy:
-      src: "{{ item.src }}"
-      dest: "{{ item.dest }}"
-    loop:
-      - src: client.key
-      - src: client.crt
-      - src: ca.crt
-      - src: server.crt
-     
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  loop:
+    - src: client.key
+      dest: "/home/{{ remote_user }}/k3s-setup/certs/client/client.key"
+    - src: client.crt
+      dest: "/home/{{ remote_user }}/k3s-setup/certs/client/client.crt"
+    - src: ca.crt
+      dest: "/home/{{ remote_user }}/k3s-setup/certs/ca/ca.crt"
+    - src: server.crt
+      dest: "/home/{{ remote_user }}/k3s-setup/certs/server/server.crt"
+  tags:
+  - k3s_install 
 
 - name: Download k3s installer
   get_url:
-    url: https://get.k3s.io
+    url: https://get.k3s.io/k3s_install.sh
     dest: /tmp/k3s_install.sh
     mode: '0755'
+  when: ((k3s_installed is not defined) and (k3s_installed == false)) or (force == true)
   tags:
   - k3s_install 
 
@@ -65,7 +88,7 @@
     INSTALL_K3S_EXEC: '--nodeploy servicelb --no-deploy traefik'
   tags:
   - k3s_install
-  when: (first_node_IP_address is not defined) and (is_first_node == true)
+  when: ((first_node_IP_address is not defined) and (is_first_node == true)) and (((k3s_installed is not defined) and (k3s_installed == false)) or (force == true))
 
 - name: Run k3s server installer - nth node
   script: /tmp/k3s_install.sh
@@ -78,7 +101,7 @@
   when: (first_node_IP_address is defined) and (is_first_node == false)
 
 - name: Install metallb via helm
-  helm:
+  kubernetes.core.helm:
     host: localhost
     state: present
     name:  metallb
@@ -125,7 +148,6 @@
     validate:
       fail_on_error: yes
       strict: no
-    apply: yes
     resource_definition: "{{ lookup('file', '/tmp/00-crds.yaml ')}}"
   tags:
   - k3s_support
@@ -133,6 +155,7 @@
 - name: Add jetstack repo to helm and update all helm repos
   # going to do this via the command module until a better way is found
   command: helm repo add jetstack https://charts.jetstack.io && helm repo update
+  tags:
   - k3s_support
 
 - name: Install cert-manager into the kube-system namespace 
@@ -160,3 +183,8 @@
   # the allowed source to localhost by design.  Need to investigate how to securely expose the dashboard
   # via a service for the purposes of the install script in order to be able to access the dashboard
   # from anywhere.
+  debug:
+    msg: "If we got this far, something is jacked"
+  tags:
+  - k3s_support
+  
