@@ -8,13 +8,3 @@
     - k3s-server
 
   tasks:
-  # - name: Detect if k3s is already installed
-  #   ansible.builtin.systemd:
-  #     name: "k3s"
-  #   register: k3s_service_status
-  #   become: true
-  #   ignore_errors: true
-
-  # - debug:
-  #     msg: "K3s is installed and enabled on this host"
-  #   when: k3s_service_status.status.UnitFileState == "enabled"  

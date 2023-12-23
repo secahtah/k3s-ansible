@@ -74,68 +74,81 @@
       dest: "/home/{{ remote_user }}/k3s-setup/certs/ca/ca.crt"
     - src: server.crt
       dest: "/home/{{ remote_user }}/k3s-setup/certs/server/server.crt"
+    - src: k3s-dbclient.key
+      dest: "/home/{{ remote_user }}/k3s-setup/certs/client/k3s-dbclient.key"
+    - src: k3s-dbclient.crt
+      dest: "/home/{{ remote_user }}/k3s-setup/certs/client/k3s-dbclient.crt"
   when: 
     - ((k3s_installed == false) or (force == true))
   tags:
   - k3s_install 
 
-- name: Download k3s installer
-  get_url:
-    url: https://get.k3s.io/k3s_install.sh
-    dest: /tmp/k3s_install.sh
-    mode: '0755'
-  when: 
-    - ((k3s_installed == false) or (force == true))
-  tags:
-  - k3s_install 
+- name: Set IPv4 and IPv6 address variables
+  set_fact:
+    ipv4_address: "{{ ansible_facts['eth0']['ipv4']['address'] }}"
+    ipv6_address: "{{ ansible_facts['eth0']['ipv6'][0]['address'] }}"
+
+- name: Concatenate IPv4 and IPv6 addresses
+  set_fact:
+    node_cidr: "{{ ipv4_address + ',' + ipv6_address }}"
 
 - name: Run k3s server installer - 1st node
-  shell: /tmp/k3s_install.sh
+  ansible.builtin.shell: >
+    curl -sfL https://get.k3s.io | sh -s - server
+    --datastore-endpoint="postgres://k3s:{{ k3s_dbpass | urlquote }}@{{ k3s_dbhost }}:5432/k3s"
+    --datastore-cafile="/home/{{ remote_user }}/k3s-setup/certs/ca/ca.crt"
+    --token=k3s
+    --datastore-certfile="/home/{{ remote_user }}/k3s-setup/certs/client/k3s-dbclient.crt"
+    --datastore-keyfile="/home/{{ remote_user }}/k3s-setup/certs/client/k3s-dbclient.key"
+    --tls-san="{{ tls_san }}"
+    --cluster-cidr={{ cluster_cidr }}
+    --service-cidr={{ service_cidr }}
+    --node-ip={{ node_cidr }}
+    --disable=servicelb
+    --disable=traefik
+    --https-listen-port={{ https_listen_port }}
   async: 3600
   poll: 10
   environment:
     K3S_KUBECONFIG_MODE: '644'
-    # FIXME: This requires updating because it's missing flags
-    INSTALL_K3S_EXEC: >
-      --datastore-endpoint="postgres://k3s:{{ k3s_dbpass }}@{{ k3s_dbhost }}:5432/k3s"
-      --datastore-cafile="/home/{{ remote_user }}/k3s-setup/certs/ca/ca.crt"
-      --tls-san="{{ tls_san }}"
-      --datastore-certfile="/home/{{ remote_user }}/k3s-setup/certs/client/k3s-dbclient.crt"
-      --datastore-keyfile="/home/{{ remote_user }}/k3s-setup/certs/client/k3s-dbclient.key"
-      --tls-san="{{ tls_san }}"
-      --cluster-cidr={{ cluster_cidr }}
-      --service-cidr={{ service_cidr }}
-      --disable=servicelb
-      --disable=traefik
-      --https-listen-port={{ https_listen_port }}
   tags:
   - k3s_install
   when: 
-    - ((first_node_IP_address is not defined) and (is_first_node == true)) and (((k3s_installed is not defined) and (k3s_installed == false)) or (force == true))
+    - ((first_node_IP_address == "") and (is_first_node == true))
     - ((k3s_installed == false) or (force == true))
 
-- name: Debug k3s_dbpass type
-  ansible.builtin.debug:
-    msg: "{{ k3s_dbpass | string | urlquote }}"
-
 - name: Run k3s server installer - nth node
-  shell: /tmp/k3s_install.sh
+  ansible.builtin.shell: >
+    curl -sfL https://get.k3s.io | sh -s - server
+    --datastore-endpoint="postgres://{{ k3s_dbuser }}:{{ k3s_dbpass | urlquote }}@{{ k3s_dbhost }}:5432/k3s"
+    --datastore-cafile="/home/{{ remote_user }}/k3s-setup/certs/ca/ca.crt"
+    --datastore-certfile="/home/{{ remote_user }}/k3s-setup/certs/client/k3s-dbclient.crt"
+    --datastore-keyfile="/home/{{ remote_user }}/k3s-setup/certs/client/k3s-dbclient.key"
+    --tls-san="{{ tls_san }}"
+    --cluster-cidr={{ cluster_cidr }}
+    --service-cidr={{ service_cidr }}
+    --node-ip={{ node_cidr }}
+    --disable=servicelb
+    --disable=traefik
+    --https-listen-port={{ https_listen_port }}
+    --token="{{ k3s_token }}"
   async: 3600
   poll: 10
   environment:
     K3S_KUBECONFIG_MODE: '644'
-    INSTALL_K3S_EXEC: >
-      --datastore-endpoint="postgres://{{ k3s_dbuser }}:{{ k3s_dbpass | urlquote }}@{{ k3s_dbhost }}:5432/k3s"
-      --datastore-cafile="/home/{{ remote_user }}/k3s-setup/certs/ca/ca.crt"
-      --datastore-certfile="/home/{{ remote_user }}/k3s-setup/certs/client/k3s-dbclient.crt"
-      --datastore-keyfile="/home/{{ remote_user }}/k3s-setup/certs/client/k3s-dbclient.key"
-      --tls-san="{{ tls_san }}"
-      --cluster-cidr={{ cluster_cidr }}
-      --service-cidr={{ service_cidr }}
-      --disable=servicelb
-      --disable=traefik
-      --https-listen-port={{ https_listen_port }}
-      --token="{{ k3s_token }}"
+    # K3S_DBPASS: "1vsgP3u**XgW6Ph5D5Q$"
+    # INSTALL_K3S_EXEC: >
+    #   --datastore-endpoint="postgres://{{ k3s_dbuser }}:$K3S_DBPASS@{{ k3s_dbhost }}:5432/k3s"
+    #   --datastore-cafile="/home/{{ remote_user }}/k3s-setup/certs/ca/ca.crt"
+    #   --datastore-certfile="/home/{{ remote_user }}/k3s-setup/certs/client/k3s-dbclient.crt"
+    #   --datastore-keyfile="/home/{{ remote_user }}/k3s-setup/certs/client/k3s-dbclient.key"
+    #   --tls-san="{{ tls_san }}"
+    #   --cluster-cidr={{ cluster_cidr }}
+    #   --service-cidr={{ service_cidr }}
+    #   --disable=servicelb
+    #   --disable=traefik
+    #   --https-listen-port={{ https_listen_port }}
+    #   --token="{{ k3s_token }}"
   when: 
     - (first_node_IP_address is defined) and (is_first_node == false)
     - ((k3s_installed == false) or (force == true))

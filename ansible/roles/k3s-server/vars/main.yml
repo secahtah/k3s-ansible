@@ -13,4 +13,4 @@ tls_san: "10.50.0.17"
 cluster_cidr: "10.42.0.0/16,2001:cafe:42::/56"
 service_cidr: "10.43.0.0/16,2001:cafe:43::/112"
 https_listen_port: 7443
-k3s_token: "K10765dfff9f33a0e25c25cb619f95d23cad099e81eb6908649ec1d8a82699c1d7c::server:k3s"
+k3s_token: "K10a8821a1d15cd68f8c8aa48202c8edfcc372503ed5effd8b71a102c9252ec6a34::server:k3s"
