@@ -1,2 +1,61 @@
 ---
 # tasks file for haproxy
+
+# install 
+- name: Install missing packages
+  ansible.builtin.yum:
+    name: 
+      - haproxy 
+      - keepalived
+    state: present
+  become: true
+
+# copy over modified keepalived and haproxy config files
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  loop:
+    - src: haproxy.cfg
+      dest: "/etc/haproxy/haproxy.cfg"
+    - src: keepalived.conf
+      dest: "/etc/keepalived/keepalived.conf"
+  become: true
+
+# Add the content of k3s/files/keepalived.conf
+popd
+pushd /etc/haproxy/
+mv haproxy.cfg haproxy.cfg.bak
+vi haproxy.cfg
+
+# add the content of k3s/files/haproxy.cfg
+
+popd
+vi /etc/systemd/system/k3s.service
+# Correct the k3s port for the kubernetes api:
+#   edit the "[Service]" portion of the file and ensure that
+#   somewhere under 
+ExecStart=/usr/local/bin/k3s \
+#   you find this line:
+        '--https-listen-port=7443' \
+
+vi /usr/lib/systemd/system/haproxy.service
+# Correct the haproxy service:
+#   edit the "[unit]" portion of the file and ensure that
+#   it requires keepalived and it waits on it:
+[Unit]
+Description=HAProxy Load Balancer
+After=network-online.target keepalived.service
+Requires=keepalived.service
+Wants=network-online.target
+
+# Reload the daemon config
+systemctl daemon-reload
+
+# Enable keepalived
+systemctl enable --now keepalived
+
+# .. and enable haproxy
+systemctl enable --now haproxy
+
+# Well, now that was super fun wasn't it.
+

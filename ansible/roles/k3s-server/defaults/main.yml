@@ -1,7 +1,7 @@
 ---
 # defaults file for k3s-server
-first_node_IP_address: "10.50.0.65"
-is_first_node: false
+first_node_IP_address: ""
+is_first_node: true
 force: false
 k3s_installed: false
 k3s_service_status: "no"

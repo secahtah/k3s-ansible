@@ -22,3 +22,8 @@ k3s05
 
 [tools_servers]
 ztp
+
+[haproxy]
+k3s01
+k3s02
+k3s03
