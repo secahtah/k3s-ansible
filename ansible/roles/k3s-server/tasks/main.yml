@@ -32,8 +32,6 @@
   become: true
   ignore_errors: true
 
-# Stuck here, when k3s isn't installed, it fails because I can't compare the key "UnitFileState" 
-# https://serverfault.com/questions/857973/is-there-a-way-to-check-that-a-dictionary-key-is-not-defined-in-ansible-task
 - name: Set fact if k3s is already installed
   ansible.builtin.set_fact:
     k3s_installed: true

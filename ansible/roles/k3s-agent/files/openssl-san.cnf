@@ -1,0 +1,19 @@
+[ req ]
+default_bits = 2048
+prompt = no
+default_md = sha256
+distinguished_name = dn
+req_extensions = req_ext
+
+[ dn ]
+CN = pgsql
+
+[ req_ext ]
+subjectAltName = @alt_names
+
+[ alt_names ]
+DNS.1 = pgsql
+DNS.2 = localhost
+DNS.3 = sd-pi-02
+DNS.4 = pidb
+DNS.5 = nas01

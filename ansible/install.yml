@@ -30,7 +30,7 @@
     - k3s_installed: false
     - k3s_service_status: "no"
   roles:
-    #- k3s-server
+    - k3s-server
   tasks:
 
 - name: Build out haproxy (kube-apiserver load balancer)
@@ -49,6 +49,15 @@
     - haproxy_kubeapi_down_interval: "5s"
   roles:
     - haproxy
+  tasks:
+
+- name: Build out k3s agents
+  hosts: agents
+  vars:
+    - k3s_token: "K10a8821a1d15cd68f8c8aa48202c8edfcc372503ed5effd8b71a102c9252ec6a34::server:k3s"
+    - kubeapi_virtual_ipaddress: "10.50.0.17"
+  roles:
+    - k3s-agent
   tasks:
 
 - name: Build out metallb (external loadbalancer)
