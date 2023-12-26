@@ -21,41 +21,82 @@
       dest: "/etc/keepalived/keepalived.conf"
   become: true
 
-# Add the content of k3s/files/keepalived.conf
-popd
-pushd /etc/haproxy/
-mv haproxy.cfg haproxy.cfg.bak
-vi haproxy.cfg
+# edit keepalived file with variables
+  ansible.builtin.replace:
+    path: /etc/keepalived/keepalived.conf
+    regexp: {{ items.regexp }}
+    replace: {{ items.replace }}
+  loop: 
+    - regexp: "\{\{ kubeapi_vrrp_check_interval \}\}"
+      replace: "{{ kubeapi_vrrp_check_interval }}"
+    - regexp: "\{\{ kubeapi_vrrp_decrement \}\}"
+      replace: "{{ kubeapi_vrrp_decrement }}"
+    - regexp: "\{\{ kubeapi_vrrp_state \}\}"
+      replace: "{{ kubeapi_vrrp_state }}"
+    - regexp: "\{\{ kubeapi_vrrp_priority \}\}"
+      replace: "{{ kubeapi_vrrp_priority }}"
+    - regexp: "\{\{ kubeapi_virtual_router_id \}\}"
+      replace: "{{ kubeapi_virtual_router_id }}"
+    - regexp: "\{\{ kubeapi_virtual_ipaddress \}\}"
+      replace: "{{ kubeapi_virtual_ipaddress }}"
+  become: true
 
-# add the content of k3s/files/haproxy.cfg
+# edit haproxy file with variables
+  ansible.builtin.replace:
+    path: /etc/haproxy/haproxy.cfg
+    regexp: {{ items.regexp }}
+    replace: {{ items.replace }}
+  loop: 
+    - regexp: "\{\{ haproxy_kubeapi_check_interval \}\}"
+      replace: "{{ haproxy_kubeapi_check_interval }}"
+    - regexp: "\{\{ haproxy_kubeapi_down_interval \}\}"
+      replace: "{{ haproxy_kubeapi_down_interval }}"
+    - regexp: "\{\{ k3s_server_1_ip_address \}\}"
+      replace: "{{ k3s_server_1_ip_address }}"
+    - regexp: "\{\{ k3s_server_2_ip_address \}\}"
+      replace: "{{ k3s_server_2_ip_address }}"
+    - regexp: "\{\{ k3s_server_3_ip_address \}\}"
+      replace: "{{ k3s_server_3_ip_address }}"
+  become: true
 
-popd
-vi /etc/systemd/system/k3s.service
-# Correct the k3s port for the kubernetes api:
-#   edit the "[Service]" portion of the file and ensure that
-#   somewhere under 
-ExecStart=/usr/local/bin/k3s \
-#   you find this line:
-        '--https-listen-port=7443' \
+# correct the haproxy service file "After" unit definition
+  ansible.builtin.replace:
+    path: /usr/lib/systemd/system/haproxy.service
+    regexp: {{ items.regexp }}
+    replace: {{ items.replace }}
+  loop:
+    - regexp: "After=network-online.target"
+      replace: "After=network-online.target keepalived.service"
+  become: true
 
-vi /usr/lib/systemd/system/haproxy.service
-# Correct the haproxy service:
-#   edit the "[unit]" portion of the file and ensure that
-#   it requires keepalived and it waits on it:
-[Unit]
-Description=HAProxy Load Balancer
-After=network-online.target keepalived.service
-Requires=keepalived.service
-Wants=network-online.target
+# correct the haproxy service file "Requires" unit definition
+  ansible.builtin.lineinfile:
+    path: /usr/lib/systemd/system/haproxy.service
+    insertafter: "After=network-online.target keepalived.service"
+    line: "Requires=keepalived.service"
+  become: true
 
-# Reload the daemon config
-systemctl daemon-reload
+# make sure systemd re-reads changes to service files
+- name: Perform daemon-reload with systemd
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+  become: true
 
 # Enable keepalived
-systemctl enable --now keepalived
+- name: enable and start keepalived service
+  ansible.builtin.systemd_service:
+    name: keepalived
+    state: started
+    enabled: true
+  become: true
 
-# .. and enable haproxy
-systemctl enable --now haproxy
+# Enable haproxy
+- name: enable and start haproxy service
+  ansible.builtin.systemd_service:
+    name: haproxy
+    state: started
+    enabled: true
+  become: true
 
 # Well, now that was super fun wasn't it.
 

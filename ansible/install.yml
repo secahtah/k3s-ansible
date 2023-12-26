@@ -36,9 +36,19 @@
 - name: Build out haproxy (kube-apiserver load balancer)
   hosts: haproxy
   vars: 
-    # Define variables here
+    - kubeapi_vrrp_state: "BACKUP"
+    - kubeapi_vrrp_decrement: -11
+    - kubeapi_vrrp_check_interval: 2
+    - kubeapi_vrrp_priority: 80
+    - kubeapi_virtual_router_id: 51
+    - kubeapi_virtual_ipaddress: "10.50.0.17/24"
+    - k3s_server_1_ip_address: "10.50.0.65"
+    - k3s_server_2_ip_address: "10.50.0.66"
+    - k3s_server_3_ip_address: "10.50.0.67"
+    - haproxy_kubeapi_check_interval: "10s"
+    - haproxy_kubeapi_down_interval: "5s"
   roles:
-#    - haproxy
+    - haproxy
   tasks:
 
 - name: Build out metallb (external loadbalancer)
