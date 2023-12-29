@@ -81,6 +81,9 @@
     - haproxy
   tasks:
 
+# fix token, it has to come from the exported: 
+# k3s_token: "{{ hostvars['localhost']['k3s_token'] }}"
+# value
 - name: Build out k3s agents
   hosts: agents
   vars:
