@@ -1,9 +1,6 @@
-[all_k3s]
-k3s01
-k3s02
-k3s03
-k3s04
-k3s05
+[all_k3s:children]
+servers
+agents
 
 [all:vars]
 ansible_python_interpreter=/usr/bin/python3
@@ -11,10 +8,19 @@ ansible_user=sdalton
 host_key_checking=False
 remote_user=sdalton
 
-[servers]
-k3s01
-k3s02
-k3s03
+[servers:children]
+server_primary
+server_secondary
+server_tertiary
+
+[server_primary]
+k3s01 kubeapi_vrrp_state="MASTER" kubeapi_vrrp_priority=100
+
+[server_secondary]
+k3s02 kubeapi_vrrp_state="BACKUP" kubeapi_vrrp_priority=90
+
+[server_tertiary]
+k3s03 kubeapi_vrrp_state="BACKUP" kubeapi_vrrp_priority=80
 
 [agents]
 k3s04
@@ -23,7 +29,5 @@ k3s05
 [tools_servers]
 ztp
 
-[haproxy]
-k3s01
-k3s02
-k3s03
+[haproxy:children]
+servers

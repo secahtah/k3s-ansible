@@ -19,7 +19,7 @@
 
 - name: Detect if k3s is already installed
   ansible.builtin.systemd:
-    name: "k3s"
+    name: "k3s-agent"
   register: k3s_service_status
   become: true
   ignore_errors: true
@@ -64,6 +64,10 @@
       dest: "/home/{{ remote_user }}/k3s-setup/certs/ca/ca.crt"
     - src: server.crt
       dest: "/home/{{ remote_user }}/k3s-setup/certs/server/server.crt"
+    - src: k3s-dbclient.key
+      dest: "/home/{{ remote_user }}/k3s-setup/certs/client/k3s-dbclient.key"
+    - src: k3s-dbclient.crt
+      dest: "/home/{{ remote_user }}/k3s-setup/certs/client/k3s-dbclient.crt"
   when: 
     - ((k3s_installed == false) or (force == true))
   tags:
@@ -82,13 +86,36 @@
 ### Not working! need to normalize parameters with k3s-server
 - name: Run k3s agent installer
   ansible.builtin.shell: >
-    curl -sfL https://get.k3s.io | K3S_URL=https://{{ kubeapi_virtual_ipaddress }}:6443 
-    K3S_TOKEN={{ k3s_token}} sh - --node-ip="{{ node_cidr }}"
+    curl -sfL https://get.k3s.io | sh -s - 
+    --node-ip={{ node_cidr }}
   async: 3600
   poll: 10
   environment:
     K3S_KUBECONFIG_MODE: '644'
+    K3S_URL: "https://{{ kubeapi_virtual_ipaddress }}:6443"
+    K3S_TOKEN: "{{ k3s_token }}"
   when: 
     - ((k3s_installed == false) or (force == true))
   tags:
   - k3s_install
+
+    # curl -sfL https://get.k3s.io | sh -s - server
+    # --datastore-endpoint="postgres://{{ k3s_dbuser }}:{{ k3s_dbpass | urlquote }}@{{ k3s_dbhost }}:5432/k3s"
+    # --datastore-cafile="/home/{{ remote_user }}/k3s-setup/certs/ca/ca.crt"
+    # --datastore-certfile="/home/{{ remote_user }}/k3s-setup/certs/client/k3s-dbclient.crt"
+    # --datastore-keyfile="/home/{{ remote_user }}/k3s-setup/certs/client/k3s-dbclient.key"
+    # --tls-san="{{ tls_san }}"
+    # --cluster-cidr={{ cluster_cidr }}
+    # --service-cidr={{ service_cidr }}
+    # --node-ip={{ node_cidr }}
+    # --disable=servicelb
+    # --disable=traefik
+    # --https-listen-port={{ https_listen_port }}
+    # --token="{{ k3s_token }}"
+
+    # --datastore-endpoint="postgres://{{ k3s_dbuser }}:{{ k3s_dbpass | urlquote }}@{{ k3s_dbhost }}:5432/k3s"
+    # --datastore-cafile="/home/{{ remote_user }}/k3s-setup/certs/ca/ca.crt"
+    # --datastore-certfile="/home/{{ remote_user }}/k3s-setup/certs/client/k3s-dbclient.crt"
+    # --datastore-keyfile="/home/{{ remote_user }}/k3s-setup/certs/client/k3s-dbclient.key"
+    # --cluster-cidr={{ cluster_cidr }}
+    # --service-cidr={{ service_cidr }}

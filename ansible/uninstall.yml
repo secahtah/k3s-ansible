@@ -1,0 +1,26 @@
+---
+- name: Uninstall k3s on servers
+  hosts: servers
+  vars:
+    # Define any variables here
+  roles:
+    #- nothign
+  tasks:
+    - name: Uninstall k3s on servers
+      ansible.builtin.command: /usr/local/bin/k3s-uninstall.sh
+
+- name: Uninstall k3s on agents
+  hosts: agents
+  vars:
+    # Define zee variables herez
+  roles:
+    # nothign
+  tasks: 
+    - name: Uninstall k3s on agents
+      ansible.builtin.command: /usr/local/bin/k3s-agents-uninstall.sh
+
+# run this on all servers
+# ansible all_k3s -i ./inventory-sdalton -m command -a "/usr/local/bin/k3s-uninstall.sh"
+
+# run this on all agents
+# ansible all_k3s -i ./inventory-sdalton -m command -a "/usr/local/bin/k3s-agent-uninstall.sh"

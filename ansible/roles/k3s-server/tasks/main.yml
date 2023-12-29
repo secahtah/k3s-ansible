@@ -20,11 +20,6 @@
 # Pass the user as an --extra-var to this playbook if you need to override that
 # field.
 
-- name: Bail if they didn't set values correctly
-  fail: 
-    msg: Override the values of first_node_IP_address and is_first_node
-  when: (first_node_IP_address is not defined) and (is_first_node == false)
-
 - name: Detect if k3s is already installed
   ansible.builtin.systemd:
     name: "k3s"
@@ -90,6 +85,8 @@
   set_fact:
     node_cidr: "{{ ipv4_address + ',' + ipv6_address }}"
 
+# FIXME: Need to redo the "when" clause so this can be executed sequentially
+#        Use the host groups to identify the first node
 - name: Run k3s server installer - 1st node
   ansible.builtin.shell: >
     curl -sfL https://get.k3s.io | sh -s - server
@@ -111,9 +108,65 @@
     K3S_KUBECONFIG_MODE: '644'
   tags:
   - k3s_install
-  when: 
-    - ((first_node_IP_address == "") and (is_first_node == true))
-    - ((k3s_installed == false) or (force == true))
+  when: ((is_first_node == true) and ((k3s_installed == false) or (force == true)))
+
+- name: Extract k3s token from first node
+  slurp:
+    src: /var/lib/rancher/k3s/server/token
+  register: tmp_k3s_token
+  become: true
+  when: is_first_node == true
+
+- name: Set fact for k3s token - from 1st node
+  set_fact:
+    k3s_token: "{{ tmp_k3s_token['content'] | b64decode | trim }}"
+  delegate_to: localhost
+  delegate_facts: true
+  when: is_first_node == true
+
+- debug: 
+    msg: "k3s_token is {{ hostvars['localhost']['k3s_token'] }}"
+  when: is_first_node == true
+
+- name: Set fact for k3s token - from nth node
+  set_fact:
+    k3s_token: "{{ hostvars['localhost']['k3s_token'] }}"
+  when: is_first_node == false
+
+- name: Extract kubeconfig from 1st node
+  slurp:
+    src: /etc/rancher/k3s/k3s.yaml
+  register: tmp_kubeconfig
+  become: true
+  when: is_first_node == true
+
+- name: Set fact for kubeconfig - 1
+  set_fact:
+    kubeconfig: "{{ tmp_kubeconfig['content'] | b64decode }}"
+  delegate_to: localhost
+  delegate_facts: true
+  when: is_first_node == true
+
+- name: Set fact for kubeconfig - 2
+  set_fact:
+    kubeconfig_local: "{{ hostvars['localhost']['kubeconfig'] }}"
+  when: is_first_node == true
+
+- name: Create kubeconfig file for user
+  copy:
+    content: "{{ kubeconfig_local }}"
+    dest: ~/.kube/config
+  delegate_to: localhost
+  delegate_facts: true
+  when: is_first_node == true
+
+- name: Edit kubeconfig file for user
+  meta: noop
+# need to edit out 127.0.0.1 and replace with kubeapi_virtual_ipaddress without
+# the prefix /nn
+# not sure this should even go here... 
+#sed -i 's/127.0.0.1/10.50.0.17/g' ~/.kube/config 
+#sed -i 's/7443/6443/g' ~/.kube/config
 
 - name: Run k3s server installer - nth node
   ansible.builtin.shell: >
@@ -134,24 +187,9 @@
   poll: 10
   environment:
     K3S_KUBECONFIG_MODE: '644'
-    # K3S_DBPASS: "1vsgP3u**XgW6Ph5D5Q$"
-    # INSTALL_K3S_EXEC: >
-    #   --datastore-endpoint="postgres://{{ k3s_dbuser }}:$K3S_DBPASS@{{ k3s_dbhost }}:5432/k3s"
-    #   --datastore-cafile="/home/{{ remote_user }}/k3s-setup/certs/ca/ca.crt"
-    #   --datastore-certfile="/home/{{ remote_user }}/k3s-setup/certs/client/k3s-dbclient.crt"
-    #   --datastore-keyfile="/home/{{ remote_user }}/k3s-setup/certs/client/k3s-dbclient.key"
-    #   --tls-san="{{ tls_san }}"
-    #   --cluster-cidr={{ cluster_cidr }}
-    #   --service-cidr={{ service_cidr }}
-    #   --disable=servicelb
-    #   --disable=traefik
-    #   --https-listen-port={{ https_listen_port }}
-    #   --token="{{ k3s_token }}"
-  when: 
-    - (first_node_IP_address is defined) and (is_first_node == false)
-    - ((k3s_installed == false) or (force == true))
   tags:
   - k3s_install
+  when: ((is_first_node == false) and ((k3s_installed == false) or (force == true)))
 
 # - name: Install metallb via helm
 #   kubernetes.core.helm:
