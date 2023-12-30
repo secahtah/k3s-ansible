@@ -87,7 +87,6 @@
 - name: Build out k3s agents
   hosts: agents
   vars:
-    - k3s_token: "K10a8821a1d15cd68f8c8aa48202c8edfcc372503ed5effd8b71a102c9252ec6a34::server:k3s"
     - kubeapi_virtual_ipaddress: "10.50.0.17"
     - k3s_dbpass: !vault |
               $ANSIBLE_VAULT;1.1;AES256

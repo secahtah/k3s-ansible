@@ -17,6 +17,12 @@
     msg: Override the values of kubeapi_virtual_ipaddress
   when: kubeapi_virtual_ipaddress is not defined
 
+# Note: this depends on the role being called after the k3s-server role; 
+#       like from the same playbook. This may blow up in my face layer. X-P
+- name: Lookup the k3s token
+  set_fact:
+    k3s_token: "{{ hostvars['localhost']['k3s_token'] }}"  
+
 - name: Detect if k3s is already installed
   ansible.builtin.systemd:
     name: "k3s-agent"

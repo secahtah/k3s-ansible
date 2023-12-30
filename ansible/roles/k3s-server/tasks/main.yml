@@ -85,8 +85,6 @@
   set_fact:
     node_cidr: "{{ ipv4_address + ',' + ipv6_address }}"
 
-# FIXME: Need to redo the "when" clause so this can be executed sequentially
-#        Use the host groups to identify the first node
 - name: Run k3s server installer - 1st node
   ansible.builtin.shell: >
     curl -sfL https://get.k3s.io | sh -s - server
@@ -117,18 +115,18 @@
   become: true
   when: is_first_node == true
 
-- name: Set fact for k3s token - from 1st node
+- name: Stash the k3s token in localhosts's variables
   set_fact:
     k3s_token: "{{ tmp_k3s_token['content'] | b64decode | trim }}"
   delegate_to: localhost
   delegate_facts: true
   when: is_first_node == true
 
-- debug: 
-    msg: "k3s_token is {{ hostvars['localhost']['k3s_token'] }}"
-  when: is_first_node == true
+# - debug: 
+#     msg: "k3s_token is {{ hostvars['localhost']['k3s_token'] }}"
+#   when: is_first_node == true
 
-- name: Set fact for k3s token - from nth node
+- name: Lookup k3s token from localhost's variables
   set_fact:
     k3s_token: "{{ hostvars['localhost']['k3s_token'] }}"
   when: is_first_node == false
