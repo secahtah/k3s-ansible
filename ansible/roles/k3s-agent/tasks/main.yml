@@ -88,8 +88,6 @@
   set_fact:
     node_cidr: "{{ ipv4_address + ',' + ipv6_address }}"
 
-
-### Not working! need to normalize parameters with k3s-server
 - name: Run k3s agent installer
   ansible.builtin.shell: >
     curl -sfL https://get.k3s.io | sh -s - 

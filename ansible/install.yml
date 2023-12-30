@@ -16,6 +16,7 @@
 - name: Install primary server
   hosts: server_primary
   vars:
+    - kubeapi_virtual_ipaddress: "10.50.0.17"
     - k3s_dbpass: !vault |
               $ANSIBLE_VAULT;1.1;AES256
               65643837313465373931366138306361653331356463393166393634656434636138653164613564
@@ -25,11 +26,10 @@
               66306565363732366130383661336432373330383664376262343963363239656361
     - k3s_dbhost: "pgsql"
     - k3s_dbuser: "k3s"
-    - tls_san: "10.50.0.17"
+    - k3s_firstnode_token: "k3s"
     - cluster_cidr: "10.42.0.0/16,2001:cafe:42::/56"
     - service_cidr: "10.43.0.0/16,2001:cafe:43::/112"
     - https_listen_port: 7443
-#    - k3s_token: "K10a8821a1d15cd68f8c8aa48202c8edfcc372503ed5effd8b71a102c9252ec6a34::server:k3s"
     - is_first_node: true
     - force: false
     - k3s_installed: false
@@ -43,6 +43,7 @@
 - name: Install secondary and tertiary servers
   hosts: server_secondary server_tertiary
   vars:
+    - kubeapi_virtual_ipaddress: "10.50.0.17"
     - k3s_dbpass: !vault |
               $ANSIBLE_VAULT;1.1;AES256
               65643837313465373931366138306361653331356463393166393634656434636138653164613564
@@ -52,11 +53,9 @@
               66306565363732366130383661336432373330383664376262343963363239656361
     - k3s_dbhost: "pgsql"
     - k3s_dbuser: "k3s"
-    - tls_san: "10.50.0.17"
     - cluster_cidr: "10.42.0.0/16,2001:cafe:42::/56"
     - service_cidr: "10.43.0.0/16,2001:cafe:43::/112"
     - https_listen_port: 7443
-#    - k3s_token: "K10a8821a1d15cd68f8c8aa48202c8edfcc372503ed5effd8b71a102c9252ec6a34::server:k3s"
     - is_first_node: false
     - force: false
     - k3s_installed: false

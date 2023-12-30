@@ -90,10 +90,10 @@
     curl -sfL https://get.k3s.io | sh -s - server
     --datastore-endpoint="postgres://k3s:{{ k3s_dbpass | urlquote }}@{{ k3s_dbhost }}:5432/k3s"
     --datastore-cafile="/home/{{ remote_user }}/k3s-setup/certs/ca/ca.crt"
-    --token=k3s
+    --token="{{ k3s_firstnode_token }}"
     --datastore-certfile="/home/{{ remote_user }}/k3s-setup/certs/client/k3s-dbclient.crt"
     --datastore-keyfile="/home/{{ remote_user }}/k3s-setup/certs/client/k3s-dbclient.key"
-    --tls-san="{{ tls_san }}"
+    --tls-san="{{ kubeapi_virtual_ipaddress }}"
     --cluster-cidr={{ cluster_cidr }}
     --service-cidr={{ service_cidr }}
     --node-ip={{ node_cidr }}
@@ -138,16 +138,25 @@
   become: true
   when: is_first_node == true
 
-- name: Set fact for kubeconfig - 1
+- name: Set fact for kubeconfig
   set_fact:
     kubeconfig: "{{ tmp_kubeconfig['content'] | b64decode }}"
   delegate_to: localhost
   delegate_facts: true
   when: is_first_node == true
 
-- name: Set fact for kubeconfig - 2
+- name: Set fact for kubeconfig_local
   set_fact:
     kubeconfig_local: "{{ hostvars['localhost']['kubeconfig'] }}"
+  when: is_first_node == true
+
+- name: Make directory for kubeconfig file
+  file: 
+    path: "~/.kube"
+    state: directory
+    owner: "{{ remote_user }}"
+    group: "{{ remote_user }}"
+  delegate_to: localhost
   when: is_first_node == true
 
 - name: Create kubeconfig file for user
@@ -158,8 +167,22 @@
   delegate_facts: true
   when: is_first_node == true
 
-- name: Edit kubeconfig file for user
-  meta: noop
+- name: Edit kubeconfig file for user - IP address
+  ansible.builtin.replace:
+    path: ~/.kube/config
+    regexp: '127.0.0.1'
+    replace: "{{ kubeapi_virtual_ipaddress }}"
+  delegate_to: localhost
+  when: is_first_node == true
+
+- name: Edit kubeconfig file for user - Port number
+  ansible.builtin.replace:
+    path: ~/.kube/config
+    regexp: "{{ https_listen_port }}"
+    replace: '6443'
+  delegate_to: localhost
+  when: is_first_node == true
+
 # need to edit out 127.0.0.1 and replace with kubeapi_virtual_ipaddress without
 # the prefix /nn
 # not sure this should even go here... 
@@ -173,7 +196,7 @@
     --datastore-cafile="/home/{{ remote_user }}/k3s-setup/certs/ca/ca.crt"
     --datastore-certfile="/home/{{ remote_user }}/k3s-setup/certs/client/k3s-dbclient.crt"
     --datastore-keyfile="/home/{{ remote_user }}/k3s-setup/certs/client/k3s-dbclient.key"
-    --tls-san="{{ tls_san }}"
+    --tls-san="{{ kubeapi_virtual_ipaddress }}"
     --cluster-cidr={{ cluster_cidr }}
     --service-cidr={{ service_cidr }}
     --node-ip={{ node_cidr }}

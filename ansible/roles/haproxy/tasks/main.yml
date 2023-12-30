@@ -39,7 +39,7 @@
     - regexp: "KUBEAPI_VIRTUAL_ROUTER_ID"
       replace: "{{ kubeapi_virtual_router_id }}"
     - regexp: "KUBEAPI_VIRTUAL_IPADDRESS"
-      replace: "{{ kubeapi_virtual_ipaddress }}"
+      replace: "{{ kubeapi_virtual_ipaddress }}/{{ kubeapi_virtual_ipaddress_prefixlength }}"
   become: true
 
 # edit haproxy file with variables

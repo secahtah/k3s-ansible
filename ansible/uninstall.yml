@@ -1,3 +1,8 @@
+# uninstall.yml
+# 
+# OOF: not quite idempotent yet, leaves the haproxy install on there still
+#      and the certs and file structure, blah blah blah
+#      TODO: Fix the lack of idempotency
 ---
 - name: Uninstall k3s on servers
   hosts: servers
@@ -8,6 +13,7 @@
   tasks:
     - name: Uninstall k3s on servers
       ansible.builtin.command: /usr/local/bin/k3s-uninstall.sh
+      ignore_errors: true
 
 - name: Uninstall k3s on agents
   hosts: agents
@@ -17,10 +23,5 @@
     # nothign
   tasks: 
     - name: Uninstall k3s on agents
-      ansible.builtin.command: /usr/local/bin/k3s-agents-uninstall.sh
-
-# run this on all servers
-# ansible all_k3s -i ./inventory-sdalton -m command -a "/usr/local/bin/k3s-uninstall.sh"
-
-# run this on all agents
-# ansible all_k3s -i ./inventory-sdalton -m command -a "/usr/local/bin/k3s-agent-uninstall.sh"
+      ansible.builtin.command: /usr/local/bin/k3s-agent-uninstall.sh
+      ignore_errors: true
