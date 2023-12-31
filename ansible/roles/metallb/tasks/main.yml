@@ -1,2 +1,103 @@
 ---
 # tasks file for metallb
+- name: Install metallb via helm
+  kubernetes.core.helm:
+    host: localhost
+    state: present
+    name:  metallb
+    namespace: kube-system
+    chart:
+      name: stable/metallb
+      source:
+        type: repo
+        location: https://kubernetes-charts.storage.googleapis.com
+    values:
+      configInline:
+        address-pools:
+          - name: default
+            protocol: layer2
+            addresses: "{{ metallb_start_ip }}-{{ metallb_end_ip }}"
+  tags:
+  - k3s_support
+
+
+# #- name: Install metallb via helm with the command module
+# #  command: >
+# #    helm install metallb stable/metallb --namespace kube-system 
+# #    --set configInline.address-pools[0].name=default 
+# #    --set configInline.address-pools[0].protocol=layer2 
+# #    --set configInline.address-pools[0].addresses[0]=192.168.1.128-192.168.1.254
+
+# - name: Download the custom resource definition for cert manager
+#   get_url:
+#     url: https://raw.githubusercontent.com/jetstack/cert-manager/release-0.14/deploy/manifests/00-crds.yaml
+#     dest: /tmp/00-crds.yaml
+#     mode: '0777'
+#   when: 
+#     - ((k3s_installed == false) or (force == true))
+#   tags:
+#   - k3s_support
+
+# - name: Install custom resource definition for cert manager
+#   #? can this be done via the k8s module?  Not clear if that's just kubectl under the hood
+#   # looks like it can, trying that out - 
+#   # kubectl apply --validate=false -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.14/deploy/manifests/00-crds.yaml
+#   k8s:
+#     state: present
+#     api_version: v1
+#     apply: yes
+#     validate:
+#       fail_on_error: yes
+#       strict: no
+#     resource_definition: "{{ lookup('file', '/tmp/00-crds.yaml ')}}"
+#   when: 
+#     - ((k3s_installed == false) or (force == true))
+#   tags:
+#   - k3s_support
+
+# - name: Add jetstack repo to helm and update all helm repos
+#   # going to do this via the command module until a better way is found
+#   command: helm repo add jetstack https://charts.jetstack.io && helm repo update
+#   when: 
+#     - ((k3s_installed == false) or (force == true))
+#   tags:
+#   - k3s_support
+
+# - name: Install cert-manager into the kube-system namespace 
+#   # goign to do this via the command module until a better way is found
+#   command: helm install cert-manager jetstack/cert-manager --namespace kube-system
+#   when: 
+#     - ((k3s_installed == false) or (force == true))
+#   tags:
+#   - k3s_support
+
+# - name: Configure lets-encrypt staging certificate issues
+#   k8s:
+#     state: present
+#     src: "../../{{ user }}/cert-issuer-stage.yml"
+#   when: 
+#     - ((k3s_installed == false) or (force == true))
+#   tags:
+#   - k3s_support
+
+# - name: Configure lets-encrypt prod certificate issues
+#   k8s:
+#     state: present
+#     src: "../../{{ user }}/cert-issuer-prod.yml"
+#   when: 
+#     - ((k3s_installed == false) or (force == true))
+#   tags:
+#   - k3s_support
+
+# - name: Install the K8s dashboard
+#   # Note, the guide only walks you through using kube proxy to access the dashboard which restricts
+#   # the allowed source to localhost by design.  Need to investigate how to securely expose the dashboard
+#   # via a service for the purposes of the install script in order to be able to access the dashboard
+#   # from anywhere.
+#   debug:
+#     msg: "If we got this far, something is jacked"
+#   when: 
+#     - ((k3s_installed == false) or (force == true))
+#   tags:
+#   - k3s_support
+  

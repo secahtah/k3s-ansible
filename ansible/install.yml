@@ -103,8 +103,12 @@
   tasks:
 
 - name: Build out metallb (external loadbalancer)
-  hosts: all_k3s
-  vars: 
+# we should only need one server selected here; 
+# task runs against localhost
+  hosts: localhost
+  vars:
+    - metallb_start_ip: 10.50.0.30
+    - metallb_end_ip: 10.50.0.49
   roles:
-#    - metallb
+    - metallb
   tasks:
