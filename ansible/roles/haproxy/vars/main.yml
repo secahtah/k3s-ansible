@@ -1,16 +1,3 @@
 ---
 # vars file for haproxy
 #TODO: remove my lab IPs from this file and add to vars for install.yml
-
-#kubeapi_vrrp_state: "BACKUP"
-kubeapi_vrrp_decrement: -11
-kubeapi_vrrp_check_interval: 2
-#kubeapi_vrrp_priority: 80
-kubeapi_virtual_router_id: 51
-kubeapi_virtual_ipaddress: "192.2.0.5"
-kubeapi_virtual_ipaddress_prefixlength: "24"
-k3s_server_1_ip_address: "192.2.0.6"
-k3s_server_2_ip_address: "192.2.0.7"
-k3s_server_3_ip_address: "192.2.0.8"
-haproxy_kubeapi_check_interval: "10s"
-haproxy_kubeapi_down_interval: "5s"
