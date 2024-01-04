@@ -1,18 +1,19 @@
 ---
 # tasks file for common
 
-# On these pi's, they default to 4G which is abysmally low, expand them
-
-- name: Expand partition
+  # On these pi's, they default to 4G which is abysmally low, expand them
+- name: Expand partition - OracleLinux
   ansible.builtin.command:
     cmd: growpart /dev/mmcblk0 3
   become: true
   ignore_errors: true
+  when: ansible_facts['distribution'] == "OracleLinux"
 
-- name: Resize Btrfs filesystem
+- name: Resize Btrfs filesystem - OracleLinux
   ansible.builtin.command:
     cmd: btrfs filesystem resize max /
   become: true
+  when: ansible_facts['distribution'] == "OracleLinux"
 
 - name: Add DNS hosts for k3s nodes
   ansible.builtin.lineinfile:
@@ -31,18 +32,41 @@
     - { line: '10.50.0.50      ztp' }
   become: true
 
-- name: Update all packages
+- name: Update all packages - OracleLinux
   ansible.builtin.yum:
     name: '*'
     state: latest
   register: yumcommandout
   become: true
+  when: ansible_facts['distribution'] == "OracleLinux"
+
 - name: Fail if yum can't upgrade
   fail:
     msg: "yum command produced errors"
-  when: yumcommandout is not defined
+  when: ((yumcommandout is not defined) and (ansible_facts['distribution'] == "OracleLinux"))
 
-- name: Install missing packages
+- name: Fix vim - part I
+  ansible.builtin.apt:
+    name: "vim-tiny"
+    state: absent
+  become: true
+  when: ansible_facts['distribution'] == "Debian"
+
+- name: Fix vim - part II
+  ansible.builtin.apt:
+    name: "vim-nox"
+    state: latest
+  become: true
+  when: ansible_facts['distribution'] == "Debian"
+
+- name: Update all packages - Debian
+  ansible.builtin.apt:
+    name: "*"
+    state: latest
+  become: true
+  when: ansible_facts['distribution'] == "Debian"
+
+- name: Install missing packages - OracleLinux
   ansible.builtin.yum:
     name: 
       - epel-release 
@@ -53,23 +77,76 @@
       - nfs-utils
     state: present
   become: true
-  
+  when: ansible_facts['distribution'] == "OracleLinux"
+
+- name: Install missing packages - Debian
+  ansible.builtin.apt:
+    name: 
+      - jq
+      - tree
+      - nfs-common
+      - iptables
+    state: present
+  become: true
+  when: ansible_facts['distribution'] == "Debian"
+
 - name: Fail if yum can't install required packages
   fail:
     msg: "yum command produced errors"
-  when: yumcommandout is not defined
+  when: ((yumcommandout is not defined) and (ansible_facts['distribution'] == "OracleLinux"))
 
-- name: check to see if we need a reboot
-  command: needs-restarting -r
-  register: result
+# - name: check to see if we need a reboot part I - OracleLinux
+#   command: needs-restarting -r
+#   register: result
+#   ignore_errors: yes
+#   become: true
+#   when: ansible_facts['distribution'] == "OracleLinux"
+
+#### UNTESTED
+#### This part hasn't been tested because I had to migrate the k3s nodes
+#### away from Oracle Linux to Debian. Need to boot a VM and test.
+- block:
+    - name: Check to see if we need a reboot - OracleLinux
+      command: needs-restarting -r
+      register: result
+      failed_when: result.rc != 0
+      when: ansible_facts['distribution'] == "OracleLinux"
+  rescue:
+    - name: Notify reboot on failure - OracleLinux
+      debug:
+        msg: "Reboot is required (task failed)"
+      notify: Reboot Server
+####
+#### END UNTESTED
+
+- name: check to see if we need a reboot - Debian
+  stat:
+    path: /var/run/reboot-required
+  register: rebootrequired
+  become: true
+  when: ansible_facts['distribution'] == "Debian"
   ignore_errors: yes
-  become: true
-  
-- name: Reboot Server if Necessary
-  ansible.builtin.reboot:
-    reboot_timeout: 180
-  become: true
-  when: result.rc == 1
+  notify: Reboot Server
+
+#### REMOVED: moved this block to handlers
+# - name: Reboot Server if Necessary - OracleLinux
+#   ansible.builtin.reboot:
+#     reboot_timeout: 180
+#   become: true
+#   when: 
+#     - "'rc' in result"
+#     - result.rc == 1
+#     - ansible_facts['distribution'] == "OracleLinux"
+
+#### REMOVED: moved this block to handlers
+# - name: Reboot Server if Necessary - Debian
+#   ansible.builtin.reboot:
+#     reboot_timeout: 180
+#   become: true
+#   when: 
+#     - "'stat' in rebootrequired"
+#     - rebootrequired.stat.exists == True
+#     - ansible_facts['distribution'] == "Debian"
 
 - name: Create directory to mount NFS
   ansible.builtin.file:
@@ -84,11 +161,7 @@
     insertafter: EOF
     line: '{{ nfshostname }}:{{ nfsexportpath }}   {{ nfsmountpath }}   nfs   defaults 0 0'
   become: true
-
-- name: Perform daemon-reload with systemd
-  ansible.builtin.systemd_service:
-    daemon_reload: true
-  become: true
+  notify: Daemon-reload
 
 - name: Mount the new file system
   ansible.builtin.mount:
@@ -99,7 +172,9 @@
   become: true
 
 - name: Touch a file to ensure that we can write to it
-# touch /mnt/nfs/your-mom
   ansible.builtin.file:
     path: "{{ nfsmountpath }}/your-mom"
     state: touch
+
+- name: Flush Handlers at the end of role "Common"
+  meta: flush_handlers

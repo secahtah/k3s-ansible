@@ -4,6 +4,53 @@
 #      and the certs and file structure, blah blah blah
 #      TODO: Fix the lack of idempotency
 ---
+- name: Uninstall haproxy and keepalived from servers
+  hosts: servers
+  vars:
+    # Define any variables here
+  roles: 
+    #- nothign
+  tasks:
+    - name: Uninstall haproxy and keepalived from servers - OracleLinux
+      ansible.builtin.yum:
+        name: 
+          - haproxy
+          - keepalived
+        state: absent
+      become: true
+      when: ansible_facts['distribution'] == "OracleLinux"
+      notify: Reboot Server
+
+    - name: Uninstall haproxy and keepalived from servers - Debian
+      ansible.builtin.apt:
+        name: 
+          - haproxy
+          - keepalived
+        state: absent
+      become: true
+      when: ansible_facts['distribution'] == "Debian"
+      notify: Reboot Server
+    
+    - name: Remove config files we put there
+      ansible.builtin.file:
+        path: 
+          - /etc/haproxy/haproxy.cfg
+          - /etc/keepalived/keepalived.conf
+        state: absent
+      become: true
+
+  handlers:
+    - name: Reboot Server
+      ansible.builtin.reboot:
+        msg: "Reboot initiated by Ansible"
+        connect_timeout: 5
+        reboot_timeout: 600
+        pre_reboot_delay: 0
+        post_reboot_delay: 30
+        test_command: whoami
+      become: true
+      listen: "Reboot Server"
+
 - name: Uninstall k3s on servers
   hosts: servers
   vars:
@@ -14,6 +61,38 @@
     - name: Uninstall k3s on servers
       ansible.builtin.command: /usr/local/bin/k3s-uninstall.sh
       ignore_errors: true
+      notify: Remove Setup Files
+
+    - name: Remove specific string from /boot/cmdline.txt - Debian
+      lineinfile:
+        path: /boot/cmdline.txt
+        regexp: '^(.*?)(?:\s*cgroup_memory=1 cgroup_enable=memory)?(.*)$'
+        line: '\1\2'
+        backrefs: yes
+        create: no
+      register: cmdline_modification
+      become: true
+      when: ansible_facts['distribution'] == "Debian"
+      notify: Reboot Server
+
+  handlers:
+    - name: Reboot Server
+      ansible.builtin.reboot:
+        msg: "Reboot initiated by Ansible"
+        connect_timeout: 5
+        reboot_timeout: 600
+        pre_reboot_delay: 0
+        post_reboot_delay: 30
+        test_command: whoami
+      become: true
+      listen: "Reboot Server"
+
+    - name: Remove files we placed for k3s
+      ansible.builtin.file:
+        path: "/home/{{ remote_user }}/k3s-setup"
+        state: absent
+      become: true
+      listen: "Remove Setup Files"
 
 - name: Uninstall k3s on agents
   hosts: agents
@@ -25,3 +104,23 @@
     - name: Uninstall k3s on agents
       ansible.builtin.command: /usr/local/bin/k3s-agent-uninstall.sh
       ignore_errors: true
+      notify: Remove Setup Files
+
+  handlers:
+    - name: Reboot Server
+      ansible.builtin.reboot:
+        msg: "Reboot initiated by Ansible"
+        connect_timeout: 5
+        reboot_timeout: 600
+        pre_reboot_delay: 0
+        post_reboot_delay: 30
+        test_command: whoami
+      become: true
+      listen: "Reboot Server"
+
+    - name: Remove files we placed for k3s
+      ansible.builtin.file:
+        path: "/home/{{ remote_user }}/k3s-setup"
+        state: absent
+      become: true
+      listen: "Remove Setup Files"

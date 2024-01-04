@@ -1,19 +1,45 @@
 ---
-- name: Prepare all nodes with base packages 
-  hosts: all
+- name: Detect OS and distribution
+  module_defaults:
+    ansible.builtin.setup:
+      gather_subset: min
+  gather_facts: yes
+  hosts: servers
   vars:
-    # Define any variables here
+    # define any variables here
   roles:
-#    - common
+    - common
   tasks:
-    # - name: Print variables for host - common
-    #   debug: 
-    #     msg: "is_first_node is {{ is_first_node }}"
-    # - name: Print variables for host - common
-    #   debug: 
-    #     msg: "kubeapi_vrrp_state is {{ kubeapi_vrrp_state }} and kubeapi_vrrp_priority is {{ kubeapi_vrrp_priority }}"
+    # - name: Distribution 
+    #   debug: msg="{{ ansible_distribution }}"
+    # - name: Distribution major version
+    #   debug: "msg={{ ansible_facts['distribution'] }}"
+
+    # - name: Check a file that exists - and see what the output is
+    #   stat:
+    #     path: /vmlinuz
+    #   register: filefound
+    #   ignore_errors: true
+    
+    # - name: Check a file that does not exist - and see what the output is
+    #   stat:
+    #     path: /vmlinuzaaa
+    #   register: filenotfound
+    #   ignore_errors: true
+
+    # - debug:
+    #     msg: "File found. Output is {{ filefound.stat.exists }}"
+      
+    # - debug: 
+    #     msg: "File not found. Output is {{ filenotfound.stat.exists }}"
+
+    # - fail: 
+    #     msg: "Time to die!"
 
 - name: Install primary server
+  module_defaults:
+    ansible.builtin.setup:
+      gather_subset: min
   hosts: server_primary
   vars:
     - kubeapi_virtual_ipaddress: "10.50.0.17"
@@ -41,6 +67,9 @@
     #   fail:
 
 - name: Install secondary and tertiary servers
+  module_defaults:
+    ansible.builtin.setup:
+      gather_subset: min
   hosts: server_secondary server_tertiary
   vars:
     - kubeapi_virtual_ipaddress: "10.50.0.17"
@@ -65,6 +94,9 @@
   tasks:
 
 - name: Build out haproxy (kube-apiserver load balancer)
+  module_defaults:
+    ansible.builtin.setup:
+      gather_subset: min
   hosts: haproxy
   vars: 
     - kubeapi_vrrp_decrement: -100
@@ -80,23 +112,7 @@
   roles:
     - haproxy
   tasks:
-# kubeapi_vrrp_state: "BACKUP"
-# kubeapi_vrrp_decrement: -11
-# kubeapi_vrrp_check_interval: 2
-# kubeapi_vrrp_priority: 80
-# kubeapi_virtual_router_id: 51
-# kubeapi_virtual_ipaddress: "192.2.0.5"
-# kubeapi_virtual_ipaddress_prefixlength: "24"
-# k3s_server_1_ip_address: "192.2.0.6"
-# k3s_server_2_ip_address: "192.2.0.7"
-# k3s_server_3_ip_address: "192.2.0.8"
-# haproxy_kubeapi_check_interval: "10s"
-# haproxy_kubeapi_down_interval: "5s"
 
-
-# fix token, it has to come from the exported: 
-# k3s_token: "{{ hostvars['localhost']['k3s_token'] }}"
-# value
 - name: Build out k3s agents
   hosts: agents
   vars:
@@ -114,15 +130,4 @@
     - service_cidr: "10.43.0.0/16,2001:cafe:43::/112"
   roles:
     - k3s-agent
-  tasks:
-
-- name: Build out metallb (external loadbalancer)
-# we should only need one server selected here; 
-# task runs against localhost
-  hosts: servers
-  vars:
-    - metallb_start_ip: 10.50.0.30
-    - metallb_end_ip: 10.50.0.49
-  roles:
-    - metallb
   tasks:

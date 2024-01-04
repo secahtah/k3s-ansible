@@ -1,13 +1,23 @@
 ---
 # tasks file for haproxy
 # install 
-- name: install packages needed for this role
+- name: install packages needed for this role - OracleLinux
   ansible.builtin.yum:
     name: 
       - haproxy 
       - keepalived
     state: present
   become: true
+  when: ansible_facts['distribution'] == "OracleLinux"
+
+- name: install packages needed for this role - Debian
+  ansible.builtin.apt:
+    name: 
+      - haproxy
+      - keepalived
+    state: present
+  become: true
+  when: ansible_facts['distribution'] == "Debian"
 
 # copy over modified keepalived and haproxy config files
 - name: copy over keepalived and haproxy config files
@@ -71,6 +81,7 @@
     - regexp: "After=network-online.target"
       replace: "After=network-online.target keepalived.service"
   become: true
+  notify: Daemon-reload
 
 # correct the haproxy service file "Requires" unit definition
 - name: correct haproxy service file to resolve race condition - pt 2
@@ -79,12 +90,7 @@
     insertafter: "After=network-online.target keepalived.service"
     line: "Requires=keepalived.service"
   become: true
-
-# make sure systemd re-reads changes to service files
-- name: Perform daemon-reload with systemd
-  ansible.builtin.systemd_service:
-    daemon_reload: true
-  become: true
+  notify: Daemon-reload
 
 # Enable keepalived
 - name: enable and start keepalived service
@@ -94,6 +100,9 @@
     enabled: true
   become: true
 
+### NOTE: For reasons unknown to me, Debian requires you to reboot the node
+###       before it will work, so we're going to register with the 'Reboot Server'
+###       handler 
 # Enable haproxy
 - name: enable and start haproxy service
   ansible.builtin.systemd_service:
@@ -101,5 +110,9 @@
     state: started
     enabled: true
   become: true
+  notify: Reboot Server
+
+- name: Flush Handlers at the end of role "haproxy"
+  meta: flush_handlers
 
 # Well, now that was super fun wasn't it.
