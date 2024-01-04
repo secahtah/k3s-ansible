@@ -106,6 +106,18 @@
       ignore_errors: true
       notify: Remove Setup Files
 
+    - name: Remove specific string from /boot/cmdline.txt - Debian
+      lineinfile:
+        path: /boot/cmdline.txt
+        regexp: '^(.*?)(?:\s*cgroup_memory=1 cgroup_enable=memory)?(.*)$'
+        line: '\1\2'
+        backrefs: yes
+        create: no
+      register: cmdline_modification
+      become: true
+      when: ansible_facts['distribution'] == "Debian"
+      notify: Reboot Server
+
   handlers:
     - name: Reboot Server
       ansible.builtin.reboot:

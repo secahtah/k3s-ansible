@@ -15,6 +15,20 @@
   become: true
   when: ansible_facts['distribution'] == "OracleLinux"
 
+  # on these Pis that are runnign Debian, we have to enable cgroups
+- name: Append required string to /boot/cmdline.txt - Debian
+  lineinfile:
+    path: /boot/cmdline.txt
+    backrefs: yes
+    regexp: '^(?!.*cgroup_memory=1 cgroup_enable=memory)(.*)'
+    line: '\1 cgroup_memory=1 cgroup_enable=memory'
+    create: no
+    backup: true
+  register: cmdline_modification
+  become: true
+  when: ansible_facts['distribution'] == "Debian"
+  notify: Reboot Server
+
 - name: Add DNS hosts for k3s nodes
   ansible.builtin.lineinfile:
     path: /etc/hosts

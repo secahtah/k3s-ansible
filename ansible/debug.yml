@@ -2,7 +2,7 @@
 - name: Detect OS and distribution
   module_defaults:
     ansible.builtin.setup:
-      gather_subset: min
+      gather_subset: all
   gather_facts: yes
   hosts: servers
   vars:
@@ -39,7 +39,7 @@
 - name: Install primary server
   module_defaults:
     ansible.builtin.setup:
-      gather_subset: min
+      gather_subset: all
   hosts: server_primary
   vars:
     - kubeapi_virtual_ipaddress: "10.50.0.17"
@@ -69,7 +69,7 @@
 - name: Install secondary and tertiary servers
   module_defaults:
     ansible.builtin.setup:
-      gather_subset: min
+      gather_subset: all
   hosts: server_secondary server_tertiary
   vars:
     - kubeapi_virtual_ipaddress: "10.50.0.17"
@@ -96,7 +96,7 @@
 - name: Build out haproxy (kube-apiserver load balancer)
   module_defaults:
     ansible.builtin.setup:
-      gather_subset: min
+      gather_subset: all
   hosts: haproxy
   vars: 
     - kubeapi_vrrp_decrement: -100

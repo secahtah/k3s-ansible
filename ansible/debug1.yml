@@ -1,0 +1,14 @@
+---
+- name: Debug shit
+  # module_defaults:
+  #   ansible.builtin.setup:
+  #     gather_subset: min
+  gather_facts: yes
+  hosts: all_k3s
+  vars:
+    # define any variables here
+  roles:
+  tasks:
+  - name: Display
+    debug:
+      msg: "{{ ansible_facts }}"
