@@ -4,7 +4,7 @@
   vars:
     # Define any variables here
   roles:
-#    - common
+    - common
   tasks:
     # - name: Print variables for host - common
     #   debug: 
@@ -117,8 +117,6 @@
   tasks:
 
 - name: Build out metallb (external loadbalancer)
-# we should only need one server selected here; 
-# task runs against localhost
   hosts: servers
   vars:
     - metallb_start_ip: 10.50.0.30

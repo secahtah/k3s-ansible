@@ -109,7 +109,7 @@
     - name: Remove specific string from /boot/cmdline.txt - Debian
       lineinfile:
         path: /boot/cmdline.txt
-        regexp: '^(.*?)(?:\s*cgroup_memory=1 cgroup_enable=memory)?(.*)$'
+        regexp: '^(.*?)(?:\s*cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory)?(.*)$'
         line: '\1\2'
         backrefs: yes
         create: no

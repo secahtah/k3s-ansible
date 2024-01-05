@@ -20,8 +20,8 @@
   lineinfile:
     path: /boot/cmdline.txt
     backrefs: yes
-    regexp: '^(?!.*cgroup_memory=1 cgroup_enable=memory)(.*)'
-    line: '\1 cgroup_memory=1 cgroup_enable=memory'
+    regexp: '^(?!.*cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory)(.*)'
+    line: '\1 cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory'
     create: no
     backup: true
   register: cmdline_modification
@@ -100,6 +100,7 @@
       - tree
       - nfs-common
       - iptables
+      - python3-yaml
     state: present
   become: true
   when: ansible_facts['distribution'] == "Debian"
