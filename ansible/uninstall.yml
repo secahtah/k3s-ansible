@@ -1,8 +1,5 @@
 # uninstall.yml
 # 
-# OOF: not quite idempotent yet, leaves the haproxy install on there still
-#      and the certs and file structure, blah blah blah
-#      TODO: Fix the lack of idempotency
 ---
 - name: Uninstall haproxy and keepalived from servers
   hosts: servers

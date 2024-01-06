@@ -6,12 +6,6 @@
   roles:
     - common
   tasks:
-    # - name: Print variables for host - common
-    #   debug: 
-    #     msg: "is_first_node is {{ is_first_node }}"
-    # - name: Print variables for host - common
-    #   debug: 
-    #     msg: "kubeapi_vrrp_state is {{ kubeapi_vrrp_state }} and kubeapi_vrrp_priority is {{ kubeapi_vrrp_priority }}"
 
 - name: Install primary server
   hosts: server_primary
@@ -37,8 +31,6 @@
   roles:
     - k3s-server
   tasks:
-    # - name: and quit
-    #   fail:
 
 - name: Install secondary and tertiary servers
   hosts: server_secondary server_tertiary
@@ -80,23 +72,7 @@
   roles:
     - haproxy
   tasks:
-# kubeapi_vrrp_state: "BACKUP"
-# kubeapi_vrrp_decrement: -11
-# kubeapi_vrrp_check_interval: 2
-# kubeapi_vrrp_priority: 80
-# kubeapi_virtual_router_id: 51
-# kubeapi_virtual_ipaddress: "192.2.0.5"
-# kubeapi_virtual_ipaddress_prefixlength: "24"
-# k3s_server_1_ip_address: "192.2.0.6"
-# k3s_server_2_ip_address: "192.2.0.7"
-# k3s_server_3_ip_address: "192.2.0.8"
-# haproxy_kubeapi_check_interval: "10s"
-# haproxy_kubeapi_down_interval: "5s"
 
-
-# fix token, it has to come from the exported: 
-# k3s_token: "{{ hostvars['localhost']['k3s_token'] }}"
-# value
 - name: Build out k3s agents
   hosts: agents
   vars:
@@ -117,7 +93,7 @@
   tasks:
 
 - name: Build out metallb (external loadbalancer)
-  hosts: servers
+  hosts: localhost
   vars:
     - metallb_start_ip: 10.50.0.30
     - metallb_end_ip: 10.50.0.49
