@@ -1,3 +1,9 @@
+#
+# install.yml
+#
+# This file deploys all roles to the cluster using
+# values currently valid for my home lab. 
+#
 ---
 - name: Prepare all nodes with base packages 
   hosts: all
@@ -100,3 +106,31 @@
   roles:
     - metallb
   tasks:
+
+- name: Deploy nginx ingress controller
+  hosts: localhost
+  vars:
+    #
+  roles:
+    - ingress-nginx
+  tasks:
+
+- name: Deploy persistent volume
+  hosts: localhost
+  vars:
+    - pv_name: "nfs-mount"
+    - pv_capacity: "200Gi"
+    - pv_accessmodes: "ReadWriteOnce"
+    - pv_hostpath: "/mnt/nfs"
+  roles:
+    - storage
+  tasks:
+
+- name: Deploy metrics server
+  hosts: localhost
+  vars:
+    #
+  roles:
+    - metrics-server
+  tasks:
+

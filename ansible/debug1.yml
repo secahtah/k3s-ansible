@@ -13,13 +13,10 @@
 #     debug:
 #       msg: "{{ ansible_facts }}"
 
-- name: Deploy ingress controller
+- name: Deploy metrics server
   hosts: localhost
   vars:
-    - pv_name: "nfs-mount"
-    - pv_capacity: "200Gi"
-    - pv_accessmodes: "ReadWriteOnce"
-    - pv_hostpath: "/mnt/nfs"
+    #
   roles:
-    - storage
+    - metrics-server
   tasks:

@@ -2,6 +2,8 @@ Role Name
 =========
 
 A brief description of the role goes here.
+It does this: 
+https://docs.k3s.io/datastore/ha
 
 Requirements
 ------------
