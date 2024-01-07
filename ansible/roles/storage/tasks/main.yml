@@ -1,0 +1,19 @@
+---
+# tasks file for roles/storage
+- name: Create persistent volume
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: v1
+      kind: PersistentVolume
+      metadata:
+        name: "{{ pv_name }}"
+        labels:
+          type: local
+      spec:
+        storageClassName: manual
+        capacity:
+          storage: "{{ pv_capacity }}"
+        accessModes:
+          - "{{ pv_accessmodes }}"
+        hostPath:
+          path: "{{ pv_hostpath }}"

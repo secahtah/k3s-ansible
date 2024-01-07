@@ -16,7 +16,10 @@
 - name: Deploy ingress controller
   hosts: localhost
   vars:
-    # variables defined here
+    - pv_name: "nfs-mount"
+    - pv_capacity: "200Gi"
+    - pv_accessmodes: "ReadWriteOnce"
+    - pv_hostpath: "/mnt/nfs"
   roles:
-    - ingress-nginx
+    - storage
   tasks:
