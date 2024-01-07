@@ -1,21 +1,4 @@
 ---
-- name: Install missing crap
-  hosts: servers
-  vars: 
-    # something?
-  roles: 
-  tasks:
-  - name: Install missing packages - Debian
-    ansible.builtin.apt:
-      name: 
-        - jq
-        - tree
-        - nfs-common
-        - iptables
-        - python3-yaml
-      state: present
-    become: true
-    when: ansible_facts['distribution'] == "Debian"
 # - name: Debug shit
 #   # module_defaults:
 #   #   ansible.builtin.setup:
@@ -29,11 +12,11 @@
 #   - name: Display
 #     debug:
 #       msg: "{{ ansible_facts }}"
-- name: Build out metallb (external loadbalancer)
+
+- name: Deploy ingress controller
   hosts: localhost
   vars:
-    - metallb_start_ip: 10.50.0.30
-    - metallb_end_ip: 10.50.0.49
+    # variables defined here
   roles:
-    - metallb
+    - ingress-nginx
   tasks:

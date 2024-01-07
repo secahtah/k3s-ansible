@@ -7,12 +7,12 @@
     kind: Namespace
     state: present
 
-- name: Install helm repo
+- name: Install helm repo for metallb-system
   kubernetes.core.helm_repository:
     name: metallb
     repo_url: https://metallb.github.io/metallb
 
-- name: Update helm repo
+- name: Update helm repos
   kubernetes.core.helm:
     name: dummy
     namespace: kube-system
@@ -49,12 +49,6 @@
         name: example
         namespace: metallb-system
 
-# #- name: Install metallb via helm with the command module
-# #  command: >
-# #    helm install metallb stable/metallb --namespace kube-system 
-# #    --set configInline.address-pools[0].name=default 
-# #    --set configInline.address-pools[0].protocol=layer2 
-# #    --set configInline.address-pools[0].addresses[0]=192.168.1.128-192.168.1.254
 
 # - name: Download the custom resource definition for cert manager
 #   get_url:

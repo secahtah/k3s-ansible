@@ -59,3 +59,31 @@ EOF
 
 # 
 
+
+
+# - name: Download the custom resource definition for cert manager
+#   get_url:
+#     url: https://raw.githubusercontent.com/jetstack/cert-manager/release-0.14/deploy/manifests/00-crds.yaml
+#     dest: /tmp/00-crds.yaml
+#     mode: '0777'
+#   when: 
+#     - ((k3s_installed == false) or (force == true))
+#   tags:
+#   - k3s_support
+
+# - name: Install custom resource definition for cert manager
+#   #? can this be done via the k8s module?  Not clear if that's just kubectl under the hood
+#   # looks like it can, trying that out - 
+#   # kubectl apply --validate=false -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.14/deploy/manifests/00-crds.yaml
+#   k8s:
+#     state: present
+#     api_version: v1
+#     apply: yes
+#     validate:
+#       fail_on_error: yes
+#       strict: no
+#     resource_definition: "{{ lookup('file', '/tmp/00-crds.yaml ')}}"
+#   when: 
+#     - ((k3s_installed == false) or (force == true))
+#   tags:
+#   - k3s_support

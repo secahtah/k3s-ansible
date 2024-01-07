@@ -1,6 +1,11 @@
 # uninstall.yml
 # 
 ---
+
+#
+# Note: we don't need to remove metallb or nginx explicitly because they are
+#       removed when k3s is removed
+#
 - name: Uninstall haproxy and keepalived from servers
   hosts: servers
   vars:
