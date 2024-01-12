@@ -1,2 +1,139 @@
 ---
 # tasks file for roles/cert-issuer
+# Install vault
+
+#helm repo add hashicorp https://helm.releases.hashicorp.com
+- name: Install helm repo for Hashicorp vault
+  kubernetes.core.helm_repository:
+    name: hashicorp
+    repo_url: https://helm.releases.hashicorp.com
+
+#helm repo update
+- name: Update helm repos
+  kubernetes.core.helm:
+    name: dummy
+    namespace: kube-system
+    state: absent
+    update_repo_cache: true
+
+#helm install vault hashicorp/vault --set "injector.enabled=false"
+- name: Install hashicorp vault via helm
+  kubernetes.core.helm:
+    state: present
+    name:  vault
+    chart_ref: hashicorp/vault 
+    values:
+      injector.enabled: false
+
+# #
+# # TEST - install vault
+# #
+# # Check for "STATUS: deployed"
+# helm status vault | grep STATUS
+# # The output needs to not be null
+# helm get manifest vault
+# if [ $? -eq 0 ]; then
+#     echo "SUCCESS: Manifest was found"
+# else
+#     echo "FAIL: Manifest wasn't found"
+# fi
+# # Need to see "vault-0" in the output here
+# kubectl get pods | grep "vault-0"
+# if [ $? -eq 0 ]; then
+#     echo "SUCCESS: vault pod was found"
+# else
+#     echo "FAIL: vault pod was not found"
+# fi
+# # Need to see "vault" and "vault-internal" here
+# OUTPUT_LINES=$(kubectl get svc | grep vault | wc -l)
+# if [ $OUTPUT_LINES -ne 2 ]; then
+#     echo "FAIL: should have two services for vault"
+# else
+#     echo "PASS: found 2 services for vault"
+# fi
+# #
+
+# Initialize and unseal vault
+#   this sets the number of unseal keys to 5, and we need at least 3 of
+#   them to unseal the vault
+#kubectl exec vault-0 -- vault operator init -key-shares=5 -key-threshold=3 \
+#      -format=json > init-keys.json
+
+---
+- name: Initialize the vault
+  shell: |
+    kubectl exec vault-0 -- vault operator init -key-shares=5 -key-threshold=3
+    -format=json > init-keys.json
+
+
+# Extract key
+VAULT_UNSEAL_KEY=$(cat init-keys.json | jq -r ".unseal_keys_b64[]" | head -n 3 | tr '\n' ' ')
+
+# Unseal the vault
+for item in $VAULT_UNSEAL_KEY
+do
+  kubectl exec vault-0 -- vault operator unseal $item
+done
+
+#
+# TEST - install vault
+#
+if [ "$(kubectl get pods | grep vault | awk '{print $3}')" = "Running" ]; then
+    echo "SUCCESS: vault pod is running"
+else
+    echo "FAIL: vault pod is not running"
+fi
+#
+cat init-keys.json | jq -r ".root_token"
+VAULT_ROOT_TOKEN=$(cat init-keys.json | jq -r ".root_token")
+kubectl exec vault-0 -- vault login $VAULT_ROOT_TOKEN
+
+# Configure PKI secrets engine
+kubectl exec --stdin=true --tty=true vault-0 -- /bin/sh -c "vault secrets enable pki"
+kubectl exec --stdin=true --tty=true vault-0 -- /bin/sh -c "vault secrets tune -max-lease-ttl=8760h pki"
+kubectl exec --stdin=true --tty=true vault-0 -- /bin/sh -c "vault write pki/root/generate/internal \
+    common_name=example.com \
+    ttl=8760h"
+kubectl exec --stdin=true --tty=true vault-0 -- /bin/sh -c "vault write pki/config/urls \
+    issuing_certificates="http://vault.default:8200/v1/pki/ca" \
+    crl_distribution_points="http://vault.default:8200/v1/pki/crl""
+kubectl exec --stdin=true --tty=true vault-0 -- /bin/sh -c "vault write pki/roles/example-dot-com \
+    allowed_domains=example.com \
+    allow_subdomains=true \
+    max_ttl=72h"
+kubectl exec --stdin=true --tty=true vault-0 -- /bin/sh -c 'vault policy write pki - <<EOF
+path "pki*"                        { capabilities = ["read", "list"] }
+path "pki/sign/example-dot-com"    { capabilities = ["create", "update"] }
+path "pki/issue/example-dot-com"   { capabilities = ["create"] }
+EOF'
+
+# Configure Kubernetes Authentication
+kubectl exec --stdin=true --tty=true vault-0 -- /bin/sh -c "vault auth enable kubernetes"
+kubectl exec --stdin=true --tty=true vault-0 -- /bin/sh -c "vault write auth/kubernetes/config \
+    kubernetes_host="https://$KUBERNETES_PORT_443_TCP_ADDR:443""
+kubectl exec --stdin=true --tty=true vault-0 -- /bin/sh -c "vault write auth/kubernetes/role/issuer \
+    bound_service_account_names=issuer \
+    bound_service_account_namespaces=default \
+    policies=pki \
+    ttl=20m"
+exit
+
+# Install issuer
+kubectl create serviceaccount issuer
+kubectl apply -f files/issuer-secret.yaml
+#
+# TEST
+#
+kubectl get secrets
+#
+ISSUER_SECRET_REF=$(kubectl get secrets --output=json | jq -r '.items[].metadata | select(.name|startswith("issuer-token-")).name')
+kubectl apply -f files/vault-issuer.yaml
+
+#
+# TEST: Generate a certificate
+#
+kubectl apply -f files/example-com-cert.yaml
+kubectl describe certificate.cert-manager example-com
+# 
+
+### Everything above this line works ###
