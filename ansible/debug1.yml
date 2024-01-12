@@ -18,5 +18,5 @@
   vars:
     #
   roles:
-    - metrics-server
+    - cert-manager
   tasks:
