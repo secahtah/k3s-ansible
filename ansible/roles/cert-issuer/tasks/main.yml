@@ -60,14 +60,18 @@
 #      -format=json > init-keys.json
 
 ---
-- name: Initialize the vault
+- name: Initialize the vault and generate unseal keys
   shell: |
     kubectl exec vault-0 -- vault operator init -key-shares=5 -key-threshold=3
     -format=json > init-keys.json
 
+- name: Extract vault unseal keys
+  shell: cat init-keys.json | jq -r ".unseal_keys_b64[]" | head -n 3 | tr '\n' ' '
+  register: vault_unseal_key
 
-# Extract key
-VAULT_UNSEAL_KEY=$(cat init-keys.json | jq -r ".unseal_keys_b64[]" | head -n 3 | tr '\n' ' ')
+- name: Unseal the vault
+  shell: "kubectl exec vault-0 -- vault operator unseal {{ item }}"
+  with_items: "{{ vault_unseal_key }}"
 
 # Unseal the vault
 for item in $VAULT_UNSEAL_KEY
