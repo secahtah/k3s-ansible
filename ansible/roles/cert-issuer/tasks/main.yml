@@ -16,15 +16,18 @@
     state: absent
     update_repo_cache: true
 
-#helm install vault hashicorp/vault --set "injector.enabled=false"
+# # helm install vault hashicorp/vault --set "injector.enabled=false"
+
 - name: Install hashicorp vault via helm
   kubernetes.core.helm:
     state: present
     name:  vault
     chart_ref: hashicorp/vault
     namespace: default
-    values:
-      injector.enabled: false
+    release_values:
+      injector:
+        enabled: false
+  ignore_errors: true
 
 # #
 # # TEST - install vault

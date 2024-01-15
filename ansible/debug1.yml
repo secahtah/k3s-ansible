@@ -13,7 +13,15 @@
 #     debug:
 #       msg: "{{ ansible_facts }}"
 
-- name: Deploy metrics server
+- name: Deploy cert-manager
+  hosts: localhost
+  vars:
+    #
+  roles:
+    - cert-manager
+  tasks:
+
+- name: Deploy cert-issuer
   hosts: localhost
   vars:
     #
