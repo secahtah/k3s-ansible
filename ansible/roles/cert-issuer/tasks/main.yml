@@ -21,7 +21,8 @@
   kubernetes.core.helm:
     state: present
     name:  vault
-    chart_ref: hashicorp/vault 
+    chart_ref: hashicorp/vault
+    namespace: default
     values:
       injector.enabled: false
 
@@ -59,85 +60,194 @@
 #kubectl exec vault-0 -- vault operator init -key-shares=5 -key-threshold=3 \
 #      -format=json > init-keys.json
 
----
+### Everything above this line works ###
+
 - name: Initialize the vault and generate unseal keys
   shell: |
-    kubectl exec vault-0 -- vault operator init -key-shares=5 -key-threshold=3
-    -format=json > init-keys.json
+    kubectl exec vault-0 -- vault operator init -key-shares=5 -key-threshold=3 -format=json
+  register: initkeys
+
+- debug:
+    msg: "init-keys is {{ initkeys }}"
 
 - name: Extract vault unseal keys
   shell: cat init-keys.json | jq -r ".unseal_keys_b64[]" | head -n 3 | tr '\n' ' '
   register: vault_unseal_key
 
+# # Unseal the vault
+# for item in $VAULT_UNSEAL_KEY
+# do
+#   kubectl exec vault-0 -- vault operator unseal $item
+# done
+
 - name: Unseal the vault
   shell: "kubectl exec vault-0 -- vault operator unseal {{ item }}"
-  with_items: "{{ vault_unseal_key }}"
+  with_items: "{{ vault_unseal_key.stdout }}"
 
-# Unseal the vault
-for item in $VAULT_UNSEAL_KEY
-do
-  kubectl exec vault-0 -- vault operator unseal $item
-done
+# #
+# # TEST - install vault
+# #
+# if [ "$(kubectl get pods | grep vault | awk '{print $3}')" = "Running" ]; then
+#     echo "SUCCESS: vault pod is running"
+# else
+#     echo "FAIL: vault pod is not running"
+# fi
+# #
 
-#
-# TEST - install vault
-#
-if [ "$(kubectl get pods | grep vault | awk '{print $3}')" = "Running" ]; then
-    echo "SUCCESS: vault pod is running"
-else
-    echo "FAIL: vault pod is not running"
-fi
-#
-cat init-keys.json | jq -r ".root_token"
-VAULT_ROOT_TOKEN=$(cat init-keys.json | jq -r ".root_token")
-kubectl exec vault-0 -- vault login $VAULT_ROOT_TOKEN
+#VAULT_ROOT_TOKEN=$(cat init-keys.json | jq -r ".root_token")
+- name: Extract vault root token
+  shell: cat init-keys.json | jq -r ".root_token"
+  register: vault_root_token
+
+#kubectl exec vault-0 -- vault login $VAULT_ROOT_TOKEN
+- name: Log in to vault
+  shell: kubectl exec vault-0 -- vault login "{{ vault_root_token.stdout }}"
+
+# kubectl exec --stdin=true --tty=true vault-0 -- /bin/sh -c "vault secrets enable pki"
+# kubectl exec --stdin=true --tty=true vault-0 -- /bin/sh -c "vault secrets tune -max-lease-ttl=8760h pki"
+# kubectl exec --stdin=true --tty=true vault-0 -- /bin/sh -c "vault write pki/root/generate/internal \
+#     common_name=example.com \
+#     ttl=8760h"
+# kubectl exec --stdin=true --tty=true vault-0 -- /bin/sh -c "vault write pki/config/urls \
+#     issuing_certificates="http://vault.default:8200/v1/pki/ca" \
+#     crl_distribution_points="http://vault.default:8200/v1/pki/crl""
+# kubectl exec --stdin=true --tty=true vault-0 -- /bin/sh -c "vault write pki/roles/example-dot-com \
+#     allowed_domains=example.com \
+#     allow_subdomains=true \
+#     max_ttl=72h"
 
 # Configure PKI secrets engine
-kubectl exec --stdin=true --tty=true vault-0 -- /bin/sh -c "vault secrets enable pki"
-kubectl exec --stdin=true --tty=true vault-0 -- /bin/sh -c "vault secrets tune -max-lease-ttl=8760h pki"
-kubectl exec --stdin=true --tty=true vault-0 -- /bin/sh -c "vault write pki/root/generate/internal \
-    common_name=example.com \
-    ttl=8760h"
-kubectl exec --stdin=true --tty=true vault-0 -- /bin/sh -c "vault write pki/config/urls \
-    issuing_certificates="http://vault.default:8200/v1/pki/ca" \
-    crl_distribution_points="http://vault.default:8200/v1/pki/crl""
-kubectl exec --stdin=true --tty=true vault-0 -- /bin/sh -c "vault write pki/roles/example-dot-com \
-    allowed_domains=example.com \
-    allow_subdomains=true \
-    max_ttl=72h"
-kubectl exec --stdin=true --tty=true vault-0 -- /bin/sh -c 'vault policy write pki - <<EOF
-path "pki*"                        { capabilities = ["read", "list"] }
-path "pki/sign/example-dot-com"    { capabilities = ["create", "update"] }
-path "pki/issue/example-dot-com"   { capabilities = ["create"] }
-EOF'
+- name: Configure PKI secrets engine
+  shell: kubectl exec --stdin=true --tty=true vault-0 -- /bin/sh -c {{ item }}
+  loop:
+    - "vault secrets enable pki"
+    - "vault secrets tune -max-lease-ttl=8760h pki"
+    - "vault write pki/root/generate/internal common_name=example.com ttl=8760h"
+    - 'vault write pki/config/urls \
+      issuing_certificates="http://vault.default:8200/v1/pki/ca" \
+      crl_distribution_points="http://vault.default:8200/v1/pki/crl"'
+    - "vault write pki/roles/example-dot-com allowed_domains=example.com \
+      allow_subdomains=true max_ttl=72h"
 
-# Configure Kubernetes Authentication
-kubectl exec --stdin=true --tty=true vault-0 -- /bin/sh -c "vault auth enable kubernetes"
-kubectl exec --stdin=true --tty=true vault-0 -- /bin/sh -c "vault write auth/kubernetes/config \
-    kubernetes_host="https://$KUBERNETES_PORT_443_TCP_ADDR:443""
-kubectl exec --stdin=true --tty=true vault-0 -- /bin/sh -c "vault write auth/kubernetes/role/issuer \
-    bound_service_account_names=issuer \
-    bound_service_account_namespaces=default \
-    policies=pki \
-    ttl=20m"
-exit
+# kubectl exec --stdin=true --tty=true vault-0 -- /bin/sh -c 'vault policy write pki - <<EOF
+# path "pki*"                        { capabilities = ["read", "list"] }
+# path "pki/sign/example-dot-com"    { capabilities = ["create", "update"] }
+# path "pki/issue/example-dot-com"   { capabilities = ["create"] }
+# EOF'
+- name: Create Vault pki policy
+  shell: |
+    kubectl exec --stdin=true --tty=true vault-0 -- /bin/sh
+    vault policy write pki - <<EOF
+    path "pki*"                        { capabilities = ["read", "list"] }
+    path "pki/sign/example-dot-com"    { capabilities = ["create", "update"] }
+    path "pki/issue/example-dot-com"   { capabilities = ["create"] }
+    EOF
+    exit
+
+# # Configure Kubernetes Authentication
+# kubectl exec --stdin=true --tty=true vault-0 -- /bin/sh -c "vault auth enable kubernetes"
+# kubectl exec --stdin=true --tty=true vault-0 -- /bin/sh -c "vault write auth/kubernetes/config \
+#     kubernetes_host="https://$KUBERNETES_PORT_443_TCP_ADDR:443""
+# kubectl exec --stdin=true --tty=true vault-0 -- /bin/sh -c "vault write auth/kubernetes/role/issuer \
+#     bound_service_account_names=issuer \
+#     bound_service_account_namespaces=default \
+#     policies=pki \
+#     ttl=20m"
+# exit
+- name: Configure kubernetes authentication
+  shell: kubectl exec --stdin=true --tty=true vault-0 -- /bin/sh -c {{ item }}
+  loop:
+    - "vault auth enable kubernetes"
+    - 'vault write auth/kubernetes/config \
+      kubernetes_host="https://$KUBERNETES_PORT_443_TCP_ADDR:443'
+    - "vault write auth/kubernetes/role/issuer \
+      bound_service_account_names=issuer \
+      bound_service_account_namespaces=default \
+      policies=pki \
+      ttl=20m"
 
 # Install issuer
-kubectl create serviceaccount issuer
-kubectl apply -f files/issuer-secret.yaml
-#
-# TEST
-#
-kubectl get secrets
-#
-ISSUER_SECRET_REF=$(kubectl get secrets --output=json | jq -r '.items[].metadata | select(.name|startswith("issuer-token-")).name')
-kubectl apply -f files/vault-issuer.yaml
+#kubectl create serviceaccount issuer
+- name: Install serviceaccount for issuer
+  kubernetes.core.k8s:
+    definition:
+      apiversion: v1
+      kind: ServiceAccount
+      metadata:
+        name: issuer
+
+# Create issuer secret
+#kubectl apply -f files/issuer-secret.yaml
+- name: Create issuer secret
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: issuer-token-lmzpj
+        annotations:
+          kubernetes.io/service-account.name: issuer
+      type: kubernetes.io/service-account-token
+
+# #
+# # TEST
+# #
+# kubectl get secrets
+# #
+
+#ISSUER_SECRET_REF=$(kubectl get secrets --output=json | jq -r '.items[].metadata | select(.name|startswith("issuer-token-")).name')
+- name: Collect issuer secret ref
+  shell: |
+    kubectl get secrets --output=json | 
+    jq -r '.items[].metadata | select(.name|startswith("issuer-token-")).name'
+  register: issuer_secret_ref
+
+#kubectl apply -f files/vault-issuer.yaml
+- name: Create issuer
+  kubernetes.core.k8s:
+    definition:  
+      apiVersion: cert-manager.io/v1
+      kind: Issuer
+      metadata:
+        name: vault-issuer
+        namespace: default
+      spec:
+        vault:
+          server: http://vault.default:8200
+          path: pki/sign/example-dot-com
+          auth:
+            kubernetes:
+              mountPath: /v1/auth/kubernetes
+              role: issuer
+              secretRef:
+                name: "{{ issuer_secret_ref.stdout }}"
+                key: token
 
 #
 # TEST: Generate a certificate
 #
-kubectl apply -f files/example-com-cert.yaml
-kubectl describe certificate.cert-manager example-com
-# 
+#kubectl apply -f files/example-com-cert.yaml
+- name: Generate a test certificate
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: cert-manager.io/v1
+      kind: Certificate
+      metadata:
+        name: example-com
+        namespace: default
+      spec:
+        secretName: example-com-tls
+        issuerRef:
+          name: vault-issuer
+        commonName: www.example.com
+        dnsNames:
+        - www.example.com
+      
+#kubectl describe certificate.cert-manager example-com
+- name: Describe test certificate
+  shell: "kubectl describe certificate.cert-manager example-com"
+  register: kubectl_cert_issuer_output
 
-### Everything above this line works ###
+- debug:
+    msg: "kubectl cert issuer output is {{ kubectl_cert_issuer_output.stdout }}"
+# 
