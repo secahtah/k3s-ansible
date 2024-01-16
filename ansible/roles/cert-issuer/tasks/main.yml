@@ -29,6 +29,12 @@
         enabled: false
   ignore_errors: true
 
+- name: Wait until the container is ready
+  command: kubectl describe pod vault-0
+  register: container_ready
+  retries: 30
+  delay: 10
+  until: container_ready.stdout | regex_search('Successfully assigned default/vault-0 to ') is not none
 # #
 # # TEST - install vault
 # #
@@ -58,6 +64,7 @@
 # #
 
 # Initialize and unseal vault
+
 #   this sets the number of unseal keys to 5, and we need at least 3 of
 #   them to unseal the vault
 #kubectl exec vault-0 -- vault operator init -key-shares=5 -key-threshold=3 \
@@ -67,11 +74,11 @@
 
 - name: Initialize the vault and generate unseal keys
   shell: |
-    kubectl exec vault-0 -- vault operator init -key-shares=5 -key-threshold=3 -format=json
-  register: initkeys
+    kubectl exec vault-0 -- vault operator init -key-shares=5 -key-threshold=3 -format=json > init-keys.json
+#  register: initkeys
 
-- debug:
-    msg: "init-keys is {{ initkeys }}"
+# - debug:
+#     msg: "init-keys is {{ initkeys }}"
 
 - name: Extract vault unseal keys
   shell: cat init-keys.json | jq -r ".unseal_keys_b64[]" | head -n 3 | tr '\n' ' '
