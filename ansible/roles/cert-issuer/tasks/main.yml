@@ -27,6 +27,9 @@
     release_values:
       injector:
         enabled: false
+      ha:
+        enabled: true
+        replicas: 3
   ignore_errors: true
 
 - name: Wait until the container is ready
@@ -81,8 +84,18 @@
 #     msg: "init-keys is {{ initkeys }}"
 
 - name: Extract vault unseal keys
-  shell: cat init-keys.json | jq -r ".unseal_keys_b64[]" | head -n 3 | tr '\n' ' '
+  shell: cat init-keys.json | jq -r ".unseal_keys_b64[]" | head -n 3
   register: vault_unseal_key
+
+# | tr '\n' ' '
+
+# - name: Convert the unseal key string to a list
+#   set_fact:
+#     vault_unseal_key: "{{ vault_unseal_key_raw.stdout_lines }}"
+
+- name: Debug the unseal key
+  debug:
+    msg: "{{ vault_unseal_key.stdout }}"
 
 # # Unseal the vault
 # for item in $VAULT_UNSEAL_KEY
@@ -92,7 +105,7 @@
 
 - name: Unseal the vault
   shell: "kubectl exec vault-0 -- vault operator unseal {{ item }}"
-  with_items: "{{ vault_unseal_key.stdout }}"
+  with_items: "{{ vault_unseal_key.stdout_lines }}"
 
 # #
 # # TEST - install vault
@@ -128,16 +141,18 @@
 
 # Configure PKI secrets engine
 - name: Configure PKI secrets engine
-  shell: kubectl exec --stdin=true --tty=true vault-0 -- /bin/sh -c {{ item }}
+#  shell: kubectl exec --stdin=true --tty=true vault-0 -- /bin/sh -c {{ item }}
+  shell: "kubectl exec --stdin=true --tty=false vault-0 -- /bin/sh -c {{ item }}"
+#  shell: "kubectl exec --stdin=true --tty=false vault-0 -- /bin/sh -c \"vault secrets enable pki\""
   loop:
-    - "vault secrets enable pki"
-    - "vault secrets tune -max-lease-ttl=8760h pki"
-    - "vault write pki/root/generate/internal common_name=example.com ttl=8760h"
-    - 'vault write pki/config/urls \
+    - "\"vault secrets enable pki\""
+    - "\"vault secrets tune -max-lease-ttl=8760h pki\""
+    - "\"vault write pki/root/generate/internal common_name=example.com ttl=8760h\""
+    - '"vault write pki/config/urls \
       issuing_certificates="http://vault.default:8200/v1/pki/ca" \
-      crl_distribution_points="http://vault.default:8200/v1/pki/crl"'
-    - "vault write pki/roles/example-dot-com allowed_domains=example.com \
-      allow_subdomains=true max_ttl=72h"
+      crl_distribution_points="http://vault.default:8200/v1/pki/crl""'
+    - "\"vault write pki/roles/example-dot-com allowed_domains=example.com \
+      allow_subdomains=true max_ttl=72h\""
 
 # kubectl exec --stdin=true --tty=true vault-0 -- /bin/sh -c 'vault policy write pki - <<EOF
 # path "pki*"                        { capabilities = ["read", "list"] }
@@ -146,7 +161,7 @@
 # EOF'
 - name: Create Vault pki policy
   shell: |
-    kubectl exec --stdin=true --tty=true vault-0 -- /bin/sh
+    kubectl exec --stdin=true --tty=false vault-0 -- /bin/sh \
     vault policy write pki - <<EOF
     path "pki*"                        { capabilities = ["read", "list"] }
     path "pki/sign/example-dot-com"    { capabilities = ["create", "update"] }
@@ -165,16 +180,15 @@
 #     ttl=20m"
 # exit
 - name: Configure kubernetes authentication
-  shell: kubectl exec --stdin=true --tty=true vault-0 -- /bin/sh -c {{ item }}
+  shell: kubectl exec --stdin=true --tty=false vault-0 -- /bin/sh -c {{ item }}
   loop:
-    - "vault auth enable kubernetes"
-    - 'vault write auth/kubernetes/config \
-      kubernetes_host="https://$KUBERNETES_PORT_443_TCP_ADDR:443'
-    - "vault write auth/kubernetes/role/issuer \
+    - "\"vault auth enable kubernetes\""
+    - "\"vault write auth/kubernetes/config kubernetes_host='https://$KUBERNETES_PORT_443_TCP_ADDR:443'\""
+    - "\"vault write auth/kubernetes/role/issuer \
       bound_service_account_names=issuer \
       bound_service_account_namespaces=default \
       policies=pki \
-      ttl=20m"
+      ttl=20m\""
 
 # Install issuer
 #kubectl create serviceaccount issuer
@@ -185,6 +199,7 @@
       kind: ServiceAccount
       metadata:
         name: issuer
+        namespace: default
 
 # Create issuer secret
 #kubectl apply -f files/issuer-secret.yaml
@@ -195,6 +210,7 @@
       kind: Secret
       metadata:
         name: issuer-token-lmzpj
+        namespace: default
         annotations:
           kubernetes.io/service-account.name: issuer
       type: kubernetes.io/service-account-token
