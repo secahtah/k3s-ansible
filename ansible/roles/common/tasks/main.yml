@@ -44,6 +44,9 @@
     - { line: '10.50.0.68      k3s04' }
     - { line: '10.50.0.70      k3s05' }
     - { line: '10.50.0.50      ztp' }
+    - { line: '10.50.0.82      vault'}
+    - { line: '10.50.0.111     db'}
+    - { line: '10.50.0.10      nas'}
   become: true
 
 - name: Update all packages - OracleLinux
@@ -174,7 +177,7 @@
   ansible.builtin.lineinfile:
     path: /etc/fstab
     insertafter: EOF
-    line: '{{ nfshostname }}:{{ nfsexportpath }}   {{ nfsmountpath }}   nfs   defaults 0 0'
+    line: '{{ nfshostname }}:{{ nfsexportpath }}   {{ nfsmountpath }}   nfs   rw,sync,noacl,nocto,nolock 0 0'
   become: true
   notify: Daemon-reload
 

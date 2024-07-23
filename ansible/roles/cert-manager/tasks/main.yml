@@ -1,4 +1,5 @@
 ---
+
 # tasks file for roles/cert-manager
 - name: Create cert-manager namespace
   kubernetes.core.k8s:
@@ -27,3 +28,121 @@
     chart_ref: jetstack/cert-manager
     values:
       installCRDs: true
+
+- name: Create Vault secret for cert-manager
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: vault-secret
+        namespace: cert-manager
+      data:
+        token: "{{ vault_token | b64encode }}"
+
+- name: Read CA certificate from secret
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Secret
+    name: vault-ca-cert
+    namespace: cert-manager
+  register: ca_cert_secret
+
+- name: Set CA certificate content
+  set_fact:
+    ca_cert_content: "{{ ca_cert_secret.resources[0].data['ca.crt'] | b64decode }}"
+
+- name: Create ClusterIssuer for cert-manager
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: cert-manager.io/v1
+      kind: ClusterIssuer
+      metadata:
+        name: vault-issuer
+        namespace: cert-manager
+      spec:
+        vault:
+          server: "https://{{ vault_server }}:8200"
+          path: "pki_int/sign/{{ vault_path }}"
+          auth:
+            tokenSecretRef:
+              name: vault-secret
+              key: token
+          caBundle: "{{ ca_cert_content | b64encode }}"
+
+- name: Create a test certificate to verify that cert-manager is working
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: cert-manager.io/v1
+      kind: Certificate
+      metadata:
+        name: example-com
+        namespace: default
+      spec:
+        secretName: example-com-tls
+        issuerRef:
+          name: vault-issuer
+          kind: ClusterIssuer
+        commonName: example.com
+        dnsNames:
+          - example.com
+          - www.example.com
+
+- name: Wait for the certificate to be ready
+  kubernetes.core.k8s_info:
+    api_version: cert-manager.io/v1
+    kind: Certificate
+    name: example-com
+    namespace: default
+  register: cert_info
+  until: cert_info.resources[0].status.conditions[0].status == "True"
+  retries: 12
+  delay: 10
+
+- name: Get the name of the created secret
+  set_fact:
+    secret_name: "{{ cert_info.resources[0].spec.secretName }}"
+
+- name: Get the serial number of the issued certificate
+  shell: |
+    kubectl get secret {{ secret_name }} -n default -o jsonpath='{.data.tls\.crt}' | base64 --decode | openssl x509 -noout -serial | awk -F= '{print $2}'
+  register: cert_serial
+
+- name: Debug original serial number
+  debug:
+    msg: "Original Certificate serial number is {{ cert_serial.stdout }}"
+
+- name: Format serial number with colons
+  set_fact:
+    certificate_serial: "{{ cert_serial.stdout | colon_format }}"
+
+- name: Debug formatted serial number
+  debug:
+    msg: "Formatted Certificate serial number is {{ certificate_serial }}"
+
+- name: Revoke the Certificate
+  uri:
+    url: "https://{{ vault_server }}:8200/v1/pki_int/revoke"
+    method: POST
+    headers:
+      X-Vault-Token: "{{ vault_token }}"
+    body_format: json
+    body:
+      serial_number: "{{ certificate_serial }}"
+    validate_certs: no
+  when: certificate_serial is defined
+
+- name: Debug ClusterIssuer
+  kubernetes.core.k8s_info:
+    api_version: cert-manager.io/v1
+    kind: ClusterIssuer
+    name: vault-issuer
+    namespace: cert-manager
+  register: clusterissuer_info
+
+- name: Debug ClusterIssuer status
+  debug:
+    msg: "ClusterIssuer status: {{ clusterissuer_info }}"

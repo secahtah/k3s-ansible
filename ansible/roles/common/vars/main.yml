@@ -1,8 +1,8 @@
 ---
 # vars file for common
-nfshostname: nfs01
-nfsmountpath: /mnt/nfs
-nfsexportpath: /mnt/nasfs/nfs
+nfshostname: nas
+nfsmountpath: /mnt/k3s
+nfsexportpath: /mnt/gihugic/k3s
 username: sdalton
 nfsowner: sdalton
 nfsgroup: sdalton

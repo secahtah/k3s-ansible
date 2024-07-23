@@ -21,10 +21,10 @@
     - cert-manager
   tasks:
 
-- name: Deploy cert-issuer
-  hosts: localhost
-  vars:
-    #
-  roles:
-    - cert-issuer
-  tasks:
+# - name: Deploy cert-issuer
+#   hosts: localhost
+#   vars:
+#     #
+#   roles:
+#     - cert-issuer
+#   tasks:
