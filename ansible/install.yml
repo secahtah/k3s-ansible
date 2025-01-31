@@ -115,13 +115,21 @@
     - ingress-nginx
   tasks:
 
-- name: Deploy persistent volume
+# - name: Deploy persistent volume
+#   hosts: localhost
+#   vars:
+#     - pv_name: "nfs-mount"
+#     - pv_capacity: "200Gi"
+#     - pv_accessmodes: "ReadWriteOnce"
+#     - pv_hostpath: "/mnt/k3s"
+#   roles:
+#     - storage
+#   tasks:
+- name: Deploy NFS provisioner
   hosts: localhost
   vars:
-    - pv_name: "nfs-mount"
-    - pv_capacity: "200Gi"
-    - pv_accessmodes: "ReadWriteOnce"
-    - pv_hostpath: "/mnt/k3s"
+    - nfs_server_ip: "10.50.0.10"
+    - nfs_base_path: "/mnt/gihugic/k3s"
   roles:
     - storage
   tasks:
@@ -134,3 +142,10 @@
     - metrics-server
   tasks:
 
+- name: Deploy cert-manager
+  hosts: localhost
+  vars:
+    #
+  roles:
+    - cert-manager
+  tasks:

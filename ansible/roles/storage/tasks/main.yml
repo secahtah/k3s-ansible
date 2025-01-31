@@ -1,19 +1,28 @@
 ---
 # tasks file for roles/storage
-- name: Create persistent volume
-  kubernetes.core.k8s:
-    definition:
-      apiVersion: v1
-      kind: PersistentVolume
-      metadata:
-        name: "{{ pv_name }}"
-        labels:
-          type: local
-      spec:
-        storageClassName: manual
-        capacity:
-          storage: "{{ pv_capacity }}"
-        accessModes:
-          - "{{ pv_accessmodes }}"
-        hostPath:
-          path: "{{ pv_hostpath }}"
+
+- name: Ensure Helm is installed
+  ansible.builtin.command: curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
+  args:
+    creates: /usr/local/bin/helm
+  when: storage_use_nfs | default(true) | bool
+
+- name: Add NFS Provisioner Helm repository
+  kubernetes.core.helm_repository:
+    name: nfs-subdir-external-provisioner
+    repo_url: "https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/"
+  when: storage_use_nfs | default(true) | bool
+
+- name: Install NFS Provisioner using Helm
+  kubernetes.core.helm:
+    name: nfs-provisioner
+    chart_ref: nfs-subdir-external-provisioner/nfs-subdir-external-provisioner
+    release_namespace: kube-system
+    values:
+      nfs:
+        server: "{{ nfs_server_ip }}"  # Set this in your inventory or `vars/`
+        path: "{{ nfs_base_path | default('/mnt/k3s') }}"
+      storageClass:
+        name: nfs-storage
+        defaultClass: true
+  when: storage_use_nfs | default(true) | bool
